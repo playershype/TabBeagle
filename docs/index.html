@@ -14,7 +14,7 @@ h1{font-size:clamp(2.7rem,7vw,5.8rem);line-height:.95;letter-spacing:-.065em;max
 section{padding:76px 0}.title{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.045em;color:var(--navy);margin:0 0 12px}.sub{color:var(--muted);max-width:720px;margin:0 0 36px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:var(--card);border:1px solid #e6e9ed;border-radius:20px;padding:26px;box-shadow:0 8px 28px rgba(8,24,43,.05)}.card b{display:block;font-size:1.1rem;margin-bottom:8px;color:var(--navy)}.num{font-size:.8rem;font-weight:900;color:#168fa1;margin-bottom:14px}
 .dark{background:var(--navy);color:#fff}.dark .title{color:#fff}.dark .sub{color:#cbd5df}.flow{display:flex;gap:10px;flex-wrap:wrap}.step{padding:12px 16px;border:1px solid #34506b;border-radius:999px;font-weight:800}.trust{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}.quote{font-size:clamp(1.7rem,4vw,3rem);font-weight:900;line-height:1.05;letter-spacing:-.04em}.trustbox{background:#fff;color:var(--ink);border-radius:22px;padding:26px}.trustbox div{padding:13px 0;border-bottom:1px solid #edf0f2}.trustbox div:last-child{border:0}
-.cta{text-align:center}.cta p{margin-inline:auto}.ea-form{width:min(680px,100%);margin:30px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left}.ea-form label{font-weight:800;color:var(--navy);font-size:.9rem}.ea-form input,.ea-form select{width:100%;margin-top:7px;padding:14px;border:1px solid #ccd4dc;border-radius:12px;background:#fff;color:var(--ink);font:inherit}.ea-form .wide{grid-column:1/-1}.ea-form button{grid-column:1/-1;justify-self:center}.form-note{grid-column:1/-1;text-align:center;color:var(--muted);font-size:.86rem;margin:0}.success{display:none;width:min(680px,100%);margin:30px auto 0;background:#fff;border:1px solid #dfe5e9;border-radius:18px;padding:26px}.success strong{font-size:1.25rem;color:var(--navy)}
+.cta{text-align:center}.cta p{margin-inline:auto}.ea-form{width:min(680px,100%);margin:30px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left}.ea-form label{font-weight:800;color:var(--navy);font-size:.9rem}.ea-form input,.ea-form select{width:100%;margin-top:7px;padding:14px;border:1px solid #ccd4dc;border-radius:12px;background:#fff;color:var(--ink);font:inherit}.ea-form .wide{grid-column:1/-1}.ea-form button{grid-column:1/-1;justify-self:center}.form-note{grid-column:1/-1;text-align:center;color:var(--muted);font-size:.86rem;margin:0}.success{display:none;width:min(680px,100%);margin:30px auto 0;background:#fff;border:1px solid #dfe5e9;border-radius:18px;padding:26px}.success strong{font-size:1.25rem;color:var(--navy)}.form-error{grid-column:1/-1;text-align:center;color:#b42318;font-size:.9rem;margin:0;display:none}
 .footer{padding:30px 0;border-top:1px solid #e5e7eb;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
 @media(max-width:760px){.hero{padding:65px 0 55px}.grid,.trust,.ea-form{grid-template-columns:1fr}section{padding:58px 0}.nav .pill{display:none}.ea-form .wide,.ea-form button,.form-note{grid-column:1}}
 </style></head>
@@ -32,20 +32,56 @@ section{padding:76px 0}.title{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.
 <label>Business type<select name="businessType" required><option value="" selected disabled>Select one</option><option>Freelancer / Consultant</option><option>Agency</option><option>Contractor / Service business</option><option>Professional services</option><option>Other</option></select></label>
 <label>Invoices per month<select name="invoiceVolume" required><option value="" selected disabled>Select range</option><option>1–20</option><option>21–50</option><option>51–150</option><option>151–300</option><option>300+</option></select></label>
 <button class="primary" type="submit">Join Early Access</button>
-<p class="form-note">Submitting opens your email app with the details pre-filled. No information is stored on this website yet.</p>
+<p class="form-note">Join the list and we’ll keep you posted as early access opens.</p><p class="form-error" id="formError" role="alert"></p>
 </form>
-<div class="success" id="success"><strong>Almost there.</strong><p>Your email app should open with your early-access request ready to send.</p></div>
+<div class="success" id="success"><strong>You’re on the list.</strong><p>Thanks for your interest in TabBeagle. We’ll keep you posted as early access opens.</p></div>
 </div></section>
 </main>
 <footer class="wrap footer"><strong>TabBeagle</strong><span>© 2026 TabBeagle. Built for businesses that would rather do the work than chase the invoice.</span></footer>
 <script>
-document.getElementById('earlyAccessForm').addEventListener('submit',function(e){
+const SUPABASE_URL='https://kbidusxzzuwmxsukqvpm.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_EKna_cKon5jPh8fWWyMstg_vPe4qofO';
+document.getElementById('earlyAccessForm').addEventListener('submit',async function(e){
  e.preventDefault();
- const f=new FormData(this);
- const subject=encodeURIComponent('TabBeagle Early Access — '+f.get('name'));
- const body=encodeURIComponent('Name: '+f.get('name')+'\nEmail: '+f.get('email')+'\nBusiness type: '+f.get('businessType')+'\nApprox. invoices/month: '+f.get('invoiceVolume')+'\n\nI would like to join TabBeagle early access.');
- document.getElementById('success').style.display='block';
- window.location.href='mailto:hello@tabbeagle.com?subject='+subject+'&body='+body;
+ const form=this;
+ const button=form.querySelector('button[type="submit"]');
+ const errorEl=document.getElementById('formError');
+ const f=new FormData(form);
+ errorEl.style.display='none';
+ errorEl.textContent='';
+ button.disabled=true;
+ button.textContent='Joining…';
+ try{
+  const response=await fetch(SUPABASE_URL+'/rest/v1/early_access',{
+   method:'POST',
+   headers:{
+    'apikey':SUPABASE_PUBLISHABLE_KEY,
+    'Content-Type':'application/json',
+    'Prefer':'return=minimal'
+   },
+   body:JSON.stringify({
+    name:String(f.get('name')||'').trim(),
+    email:String(f.get('email')||'').trim().toLowerCase(),
+    business_type:f.get('businessType'),
+    invoice_volume:f.get('invoiceVolume')
+   })
+  });
+  if(!response.ok){
+   const detail=await response.text();
+   if(response.status===409 || detail.includes('duplicate key')){
+    throw new Error('That email is already on the early-access list.');
+   }
+   throw new Error('We could not add you right now. Please try again.');
+  }
+  form.style.display='none';
+  document.getElementById('success').style.display='block';
+  form.reset();
+ }catch(err){
+  errorEl.textContent=err.message || 'We could not add you right now. Please try again.';
+  errorEl.style.display='block';
+  button.disabled=false;
+  button.textContent='Join Early Access';
+ }
 });
 </script>
 </body></html>
