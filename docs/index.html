@@ -10,12 +10,13 @@
 .wrap{width:min(1120px,92%);margin:auto}.nav{height:76px;display:flex;align-items:center;justify-content:space-between}.brand{font-weight:900;font-size:1.35rem;color:var(--navy);letter-spacing:-.04em}.brand span{color:#168fa1}.pill{display:inline-block;padding:11px 18px;border-radius:999px;background:var(--navy);color:#fff;text-decoration:none;font-weight:750}
 .hero{padding:90px 0 70px;background:linear-gradient(145deg,#fff 0%,#f3fbfc 65%,#eff9df 100%)}.eyebrow{font-weight:800;color:#168fa1;text-transform:uppercase;letter-spacing:.12em;font-size:.78rem}
 h1{font-size:clamp(2.7rem,7vw,5.8rem);line-height:.95;letter-spacing:-.065em;max-width:920px;margin:18px 0 24px;color:var(--navy)}.lead{font-size:clamp(1.05rem,2vw,1.35rem);max-width:700px;color:#475467}
-.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}.primary{background:var(--lime);color:var(--navy);padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:900}.secondary{border:1px solid #ccd4dc;color:var(--navy);padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:800;background:#fff}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}.primary{background:var(--lime);color:var(--navy);padding:14px 22px;border:0;border-radius:12px;text-decoration:none;font-weight:900;cursor:pointer;font:inherit}.secondary{border:1px solid #ccd4dc;color:var(--navy);padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:800;background:#fff}
 section{padding:76px 0}.title{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.045em;color:var(--navy);margin:0 0 12px}.sub{color:var(--muted);max-width:720px;margin:0 0 36px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:var(--card);border:1px solid #e6e9ed;border-radius:20px;padding:26px;box-shadow:0 8px 28px rgba(8,24,43,.05)}.card b{display:block;font-size:1.1rem;margin-bottom:8px;color:var(--navy)}.num{font-size:.8rem;font-weight:900;color:#168fa1;margin-bottom:14px}
 .dark{background:var(--navy);color:#fff}.dark .title{color:#fff}.dark .sub{color:#cbd5df}.flow{display:flex;gap:10px;flex-wrap:wrap}.step{padding:12px 16px;border:1px solid #34506b;border-radius:999px;font-weight:800}.trust{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}.quote{font-size:clamp(1.7rem,4vw,3rem);font-weight:900;line-height:1.05;letter-spacing:-.04em}.trustbox{background:#fff;color:var(--ink);border-radius:22px;padding:26px}.trustbox div{padding:13px 0;border-bottom:1px solid #edf0f2}.trustbox div:last-child{border:0}
-.cta{text-align:center}.cta p{margin-inline:auto}.footer{padding:30px 0;border-top:1px solid #e5e7eb;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
-@media(max-width:760px){.hero{padding:65px 0 55px}.grid,.trust{grid-template-columns:1fr}section{padding:58px 0}.nav .pill{display:none}}
+.cta{text-align:center}.cta p{margin-inline:auto}.ea-form{width:min(680px,100%);margin:30px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left}.ea-form label{font-weight:800;color:var(--navy);font-size:.9rem}.ea-form input,.ea-form select{width:100%;margin-top:7px;padding:14px;border:1px solid #ccd4dc;border-radius:12px;background:#fff;color:var(--ink);font:inherit}.ea-form .wide{grid-column:1/-1}.ea-form button{grid-column:1/-1;justify-self:center}.form-note{grid-column:1/-1;text-align:center;color:var(--muted);font-size:.86rem;margin:0}.success{display:none;width:min(680px,100%);margin:30px auto 0;background:#fff;border:1px solid #dfe5e9;border-radius:18px;padding:26px}.success strong{font-size:1.25rem;color:var(--navy)}
+.footer{padding:30px 0;border-top:1px solid #e5e7eb;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
+@media(max-width:760px){.hero{padding:65px 0 55px}.grid,.trust,.ea-form{grid-template-columns:1fr}section{padding:58px 0}.nav .pill{display:none}.ea-form .wide,.ea-form button,.form-note{grid-column:1}}
 </style></head>
 <body>
 <header class="wrap nav"><div class="brand">Tab<span>Beagle</span></div><a class="pill" href="#early-access">Early access</a></header>
@@ -24,7 +25,27 @@ section{padding:76px 0}.title{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.
 <section><div class="wrap"><h2 class="title">Stop chasing invoices from memory.</h2><p class="sub">Your accounting software can tell you an invoice is overdue. TabBeagle is being built to help manage what happens next.</p><div class="grid"><article class="card"><div class="num">01</div><b>Know what needs attention</b><span>See outstanding AR, overdue invoices, promises to pay and accounts that need follow-up.</span></article><article class="card"><div class="num">02</div><b>Follow up with control</b><span>Prepare consistent follow-ups while keeping you in control of customer communication.</span></article><article class="card"><div class="num">03</div><b>Track the outcome</b><span>Keep the invoice, communication, promise and payment history together instead of scattered across tools.</span></article></div></div></section>
 <section id="how" class="dark"><div class="wrap"><h2 class="title">Follow the money, not the busywork.</h2><p class="sub">TabBeagle is designed around the actual AR lifecycle—not the number of emails sent.</p><div class="flow"><span class="step">Invoice</span><span class="step">Overdue</span><span class="step">Follow-up</span><span class="step">Promise to Pay</span><span class="step">Payment</span><span class="step">Recovered</span></div></div></section>
 <section><div class="wrap trust"><div><div class="eyebrow">Built around trust</div><div class="quote">Recommend → Approve → Automate.</div><p class="sub">Automation should earn trust. TabBeagle is being designed so businesses can start with recommendations and approvals before granting more autonomy.</p></div><div class="trustbox"><div><b>Visibility</b><br>Know what the system recommends and why.</div><div><b>Control</b><br>Pause follow-up or take over a customer conversation.</div><div><b>History</b><br>Keep a clear activity trail around invoices and follow-up.</div></div></div></section>
-<section id="early-access"><div class="wrap cta"><div class="eyebrow">TabBeagle is in development</div><h2 class="title">Track it. Follow up. Get paid.</h2><p class="sub">We are validating TabBeagle with freelancers and small businesses before opening broader access.</p><a class="primary" href="mailto:hello@tabbeagle.com?subject=TabBeagle%20Early%20Access">Request early access</a></div></section>
+<section id="early-access"><div class="wrap cta"><div class="eyebrow">TabBeagle is in development</div><h2 class="title">Track it. Follow up. Get paid.</h2><p class="sub">Join the early-access list. We are validating TabBeagle with freelancers and small businesses before opening broader access.</p>
+<form class="ea-form" id="earlyAccessForm">
+<label>Name<input name="name" required autocomplete="name" placeholder="Your name"></label>
+<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@business.com"></label>
+<label>Business type<select name="businessType" required><option value="" selected disabled>Select one</option><option>Freelancer / Consultant</option><option>Agency</option><option>Contractor / Service business</option><option>Professional services</option><option>Other</option></select></label>
+<label>Invoices per month<select name="invoiceVolume" required><option value="" selected disabled>Select range</option><option>1–20</option><option>21–50</option><option>51–150</option><option>151–300</option><option>300+</option></select></label>
+<button class="primary" type="submit">Join Early Access</button>
+<p class="form-note">Submitting opens your email app with the details pre-filled. No information is stored on this website yet.</p>
+</form>
+<div class="success" id="success"><strong>Almost there.</strong><p>Your email app should open with your early-access request ready to send.</p></div>
+</div></section>
 </main>
 <footer class="wrap footer"><strong>TabBeagle</strong><span>© 2026 TabBeagle. Built for businesses that would rather do the work than chase the invoice.</span></footer>
+<script>
+document.getElementById('earlyAccessForm').addEventListener('submit',function(e){
+ e.preventDefault();
+ const f=new FormData(this);
+ const subject=encodeURIComponent('TabBeagle Early Access — '+f.get('name'));
+ const body=encodeURIComponent('Name: '+f.get('name')+'\nEmail: '+f.get('email')+'\nBusiness type: '+f.get('businessType')+'\nApprox. invoices/month: '+f.get('invoiceVolume')+'\n\nI would like to join TabBeagle early access.');
+ document.getElementById('success').style.display='block';
+ window.location.href='mailto:hello@tabbeagle.com?subject='+subject+'&body='+body;
+});
+</script>
 </body></html>
