@@ -42,7 +42,13 @@ jobs:
         run: |
           cd mobile/tabbeagle-mobile/android
           chmod +x gradlew
+          mkdir -p app/src/main/assets
+          cd ..
+          npx react-native bundle --platform android --dev false --entry-file App.tsx --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+          cd android
           ./gradlew assembleDebug
+          test -s app/src/main/assets/index.android.bundle
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -q 'assets/index.android.bundle'
           APK=app/build/outputs/apk/debug/app-debug.apk
           "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --verbose --print-certs "$APK"
           "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/aapt" dump badging "$APK" | head -5
