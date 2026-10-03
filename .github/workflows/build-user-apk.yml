@@ -22,7 +22,15 @@ jobs:
           unzip -q tabbeagle-mobile.zip -d mobile
           cd mobile/tabbeagle-mobile
           npm install
-          npx expo prebuild --platform android --non-interactive
+          mkdir -p assets
+          python3 - <<'PY'
+          import base64, pathlib
+          # valid 1x1 PNG placeholders only to satisfy missing Expo source assets
+          png=base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
+          for n in ("adaptive-icon.png","icon.png","splash.png"):
+              pathlib.Path("assets",n).write_bytes(png)
+          PY
+          CI=1 npx expo prebuild --platform android
       - name: Build installable debug APK
         run: |
           cd mobile/tabbeagle-mobile/android
