@@ -1,0 +1,17 @@
+name: Inspect TabBeagle Mobile Sources
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/inspect-mobile.yml'
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect source archives
+        run: |
+          echo "=== tabbeagle-mobile.zip ==="
+          unzip -l tabbeagle-mobile.zip
+          echo "=== tabbeagle-mobile-wip.zip ==="
+          unzip -l tabbeagle-mobile-wip.zip
