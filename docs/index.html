@@ -2,30 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TabBeagle — Track it. Follow up. Get paid.</title>
-<meta name="description" content="Accounts receivable follow-up for small businesses without a dedicated AR department.">
+<title>TabBeagle — Agentic AI for Accounts Receivable</title>
+<meta name="description" content="TabBeagle is an AI Accounts Receivable Agent that monitors receivables, reasons over context, takes authorized actions, and follows through until payment or human escalation.">
 <style>
 :root{--navy:#08182B;--cyan:#25C5DF;--lime:#CAFF00;--ink:#0d1b2a;--muted:#667085;--bg:#f7f9fb;--card:#fff}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
 .wrap{width:min(1120px,92%);margin:auto}.nav{height:76px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.35rem;color:var(--navy);letter-spacing:-.04em}.brand-logo{width:46px;height:46px;border-radius:12px;object-fit:cover;display:block}.brand span{color:#168fa1}.pill{display:inline-block;padding:11px 18px;border-radius:999px;background:var(--navy);color:#fff;text-decoration:none;font-weight:750}
 .hero{padding:90px 0 70px;background:linear-gradient(145deg,#fff 0%,#f3fbfc 65%,#eff9df 100%)}.eyebrow{font-weight:800;color:#168fa1;text-transform:uppercase;letter-spacing:.12em;font-size:.78rem}
-h1{font-size:clamp(2.7rem,7vw,5.8rem);line-height:.95;letter-spacing:-.065em;max-width:920px;margin:18px 0 24px;color:var(--navy)}.lead{font-size:clamp(1.05rem,2vw,1.35rem);max-width:700px;color:#475467}
+h1{font-size:clamp(2.7rem,7vw,5.8rem);line-height:.95;letter-spacing:-.065em;max-width:980px;margin:18px 0 24px;color:var(--navy)}.lead{font-size:clamp(1.05rem,2vw,1.35rem);max-width:760px;color:#475467}
+.agentic-badge{display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:8px 12px;border:1px solid #b6e6ed;background:#eefbfc;border-radius:999px;font-size:.8rem;font-weight:900;color:#126e7b}.agentic-dot{width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 3px rgba(202,255,0,.22)}
 .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}.primary{background:var(--lime);color:var(--navy);padding:14px 22px;border:0;border-radius:12px;text-decoration:none;font-weight:900;cursor:pointer;font-family:inherit;font-size:inherit;line-height:1.5}.secondary{border:1px solid #ccd4dc;color:var(--navy);padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:800;background:#fff}
-section{padding:76px 0}.title{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.045em;color:var(--navy);margin:0 0 12px}.sub{color:var(--muted);max-width:720px;margin:0 0 36px}
+section{padding:76px 0}.title{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.045em;color:var(--navy);margin:0 0 12px}.sub{color:var(--muted);max-width:760px;margin:0 0 36px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:var(--card);border:1px solid #e6e9ed;border-radius:20px;padding:26px;box-shadow:0 8px 28px rgba(8,24,43,.05)}.card b{display:block;font-size:1.1rem;margin-bottom:8px;color:var(--navy)}.num{font-size:.8rem;font-weight:900;color:#168fa1;margin-bottom:14px}
-.dark{background:var(--navy);color:#fff}.dark .title{color:#fff}.dark .sub{color:#cbd5df}.flow{display:flex;gap:10px;flex-wrap:wrap}.step{padding:12px 16px;border:1px solid #34506b;border-radius:999px;font-weight:800}.trust{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}.quote{font-size:clamp(1.7rem,4vw,3rem);font-weight:900;line-height:1.05;letter-spacing:-.04em}.trustbox{background:#fff;color:var(--ink);border-radius:22px;padding:26px}.trustbox div{padding:13px 0;border-bottom:1px solid #edf0f2}.trustbox div:last-child{border:0}
+.dark{background:var(--navy);color:#fff}.dark .title{color:#fff}.dark .sub{color:#cbd5df}.flow{display:flex;gap:10px;flex-wrap:wrap}.step{padding:12px 16px;border:1px solid #34506b;border-radius:999px;font-weight:800}.flow-arrow{padding:12px 0;color:var(--lime);font-weight:900}
+.trust{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}.quote{font-size:clamp(1.7rem,4vw,3rem);font-weight:900;line-height:1.05;letter-spacing:-.04em}.trustbox{background:#fff;color:var(--ink);border-radius:22px;padding:26px}.trustbox div{padding:13px 0;border-bottom:1px solid #edf0f2}.trustbox div:last-child{border:0}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:28px}.compare .card{height:100%}.compare .agentic{border-color:#b6e6ed;background:#f4fdff}.rule{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f3f5f7;border-radius:12px;padding:14px;margin-top:14px;font-size:.9rem;color:#344054}.agentic .rule{background:#e8fafc}.bullet{margin:14px 0 0;padding-left:20px;color:#475467}.bullet li{margin:8px 0}
+.scenario{margin-top:28px;background:#fff;border:1px solid #dbeef2;border-radius:20px;padding:24px}.scenario strong{color:var(--navy)}.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}.event{background:#f8fbfc;border:1px solid #e3edf0;border-radius:14px;padding:16px}.event small{font-weight:900;color:#168fa1}.event p{margin:7px 0 0;color:#475467;font-size:.92rem}
 .cta{text-align:center}.cta p{margin-inline:auto}.ea-form{width:min(680px,100%);margin:30px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left}.ea-form label{font-weight:800;color:var(--navy);font-size:.9rem}.ea-form input,.ea-form select{width:100%;margin-top:7px;padding:14px;border:1px solid #ccd4dc;border-radius:12px;background:#fff;color:var(--ink);font:inherit}.ea-form .wide{grid-column:1/-1}.ea-form button{grid-column:1/-1;justify-self:center}.form-note{grid-column:1/-1;text-align:center;color:var(--muted);font-size:.86rem;margin:0}.success{display:none;width:min(680px,100%);margin:30px auto 0;background:#fff;border:1px solid #dfe5e9;border-radius:18px;padding:26px}.success strong{font-size:1.25rem;color:var(--navy)}.form-error{grid-column:1/-1;text-align:center;color:#b42318;font-size:.9rem;margin:0;display:none}
 .footer{padding:30px 0;border-top:1px solid #e5e7eb;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
-@media(max-width:760px){.hero{padding:65px 0 55px}.grid,.trust,.ea-form{grid-template-columns:1fr}section{padding:58px 0}.nav .pill{display:none}.ea-form .wide,.ea-form button,.form-note{grid-column:1}}
+@media(max-width:760px){.hero{padding:65px 0 55px}.grid,.trust,.ea-form,.compare,.timeline{grid-template-columns:1fr}section{padding:58px 0}.nav .pill{display:none}.ea-form .wide,.ea-form button,.form-note{grid-column:1}.flow-arrow{display:none}}
 </style></head>
 <body>
 <header class="wrap nav"><div class="brand"><img class="brand-logo" src="assets/file_00000000a82881f6978d6886de2de7df.png" alt="TabBeagle">Tab<span>Beagle</span></div><a class="pill" href="#early-access">Early access</a></header>
 <main>
-<section class="hero"><div class="wrap"><div class="eyebrow">Accounts Receivable for small business</div><h1>Your Accounts Receivable department, without hiring one.</h1><p class="lead">TabBeagle helps you track unpaid invoices, know what needs attention, follow up consistently, and keep the process moving until you get paid.</p><div class="actions"><a class="primary" href="#early-access">Join early access</a><a class="secondary" href="#how">See how it works</a></div></div></section>
-<section><div class="wrap"><h2 class="title">Stop chasing invoices from memory.</h2><p class="sub">Your accounting software can tell you an invoice is overdue. TabBeagle is being built to help manage what happens next.</p><div class="grid"><article class="card"><div class="num">01</div><b>Know what needs attention</b><span>See outstanding AR, overdue invoices, promises to pay and accounts that need follow-up.</span></article><article class="card"><div class="num">02</div><b>Follow up with control</b><span>Prepare consistent follow-ups while keeping you in control of customer communication.</span></article><article class="card"><div class="num">03</div><b>Track the outcome</b><span>Keep the invoice, communication, promise and payment history together instead of scattered across tools.</span></article></div></div></section>
-<section id="how" class="dark"><div class="wrap"><h2 class="title">Follow the money, not the busywork.</h2><p class="sub">TabBeagle is designed around the actual AR lifecycle—not the number of emails sent.</p><div class="flow"><span class="step">Invoice</span><span class="step">Overdue</span><span class="step">Follow-up</span><span class="step">Promise to Pay</span><span class="step">Payment</span><span class="step">Recovered</span></div></div></section>
-<section><div class="wrap trust"><div><div class="eyebrow">Built around trust</div><div class="quote">Recommend → Approve → Automate.</div><p class="sub">Automation should earn trust. TabBeagle is being designed so businesses can start with recommendations and approvals before granting more autonomy.</p></div><div class="trustbox"><div><b>Visibility</b><br>Know what the system recommends and why.</div><div><b>Control</b><br>Pause follow-up or take over a customer conversation.</div><div><b>History</b><br>Keep a clear activity trail around invoices and follow-up.</div></div></div></section>
-<section id="early-access"><div class="wrap cta"><div class="eyebrow">TabBeagle is in development</div><h2 class="title">Track it. Follow up. Get paid.</h2><p class="sub">Join the early-access list. We are validating TabBeagle with freelancers and small businesses before opening broader access.</p>
+<section class="hero"><div class="wrap"><div class="eyebrow">Agentic AI for Accounts Receivable</div><div class="agentic-badge"><span class="agentic-dot"></span>AI ACCOUNTS RECEIVABLE AGENT</div><h1>Your AI Accounts Receivable Agent. Get paid without chasing customers.</h1><p class="lead">TabBeagle monitors your receivables, understands the context of each invoice, chooses the next authorized action, follows up, checks the result, and keeps the process moving until the case is paid or needs you.</p><div class="actions"><a class="primary" href="#early-access">Join early access</a><a class="secondary" href="#agentic">See how the agent works</a></div></div></section>
+<section id="agentic"><div class="wrap"><h2 class="title">Not just reminders. An agent that follows the work through.</h2><p class="sub">Traditional automation executes a trigger. TabBeagle is being designed as an agentic operating layer for AR: it observes what changed, reasons over context, takes an authorized action, and then evaluates what happened next.</p><div class="grid"><article class="card"><div class="num">01 · OBSERVE</div><b>See what changed</b><span>Track invoices, aging, replies, promises to pay, payment events and exceptions.</span></article><article class="card"><div class="num">02 · REASON</div><b>Choose the next move</b><span>Use invoice and customer context, timing, history and your approved playbooks to determine the next action.</span></article><article class="card"><div class="num">03 · ACT + FOLLOW THROUGH</div><b>Execute, then check the outcome</b><span>Recommend or execute the approved follow-up, then re-check until payment, resolution or human escalation.</span></article></div></div></section>
+<section id="how" class="dark"><div class="wrap"><h2 class="title">The Agentic AR loop.</h2><p class="sub">The system is designed to keep working on the case instead of stopping after a single email or reminder.</p><div class="flow"><span class="step">Observe</span><span class="flow-arrow">→</span><span class="step">Reason</span><span class="flow-arrow">→</span><span class="step">Act</span><span class="flow-arrow">→</span><span class="step">Check result</span><span class="flow-arrow">→</span><span class="step">Repeat / Escalate</span></div></div></section>
+<section><div class="wrap"><h2 class="title">Automation is not the same as Agentic AI.</h2><p class="sub">This distinction matters to Controllers and finance teams. TabBeagle is intended to manage the next decision in the workflow, not simply fire a scheduled message.</p><div class="compare"><article class="card"><div class="num">TRADITIONAL AUTOMATION</div><b>Fixed trigger → fixed action</b><div class="rule">IF invoice_overdue &gt; 7 days<br>THEN send_email(template_2)</div><ul class="bullet"><li>Executes a predefined rule.</li><li>Limited awareness of what happened before or after.</li><li>Usually waits for a person to decide the next step.</li></ul></article><article class="card agentic"><div class="num">TABBEAGLE AGENTIC AI</div><b>Observe → Reason → Act → Check result</b><div class="rule">CONTEXT → NEXT AUTHORIZED ACTION → OUTCOME → RE-EVALUATE / ESCALATE</div><ul class="bullet"><li>Uses invoice and customer context to prioritize the case.</li><li>Selects from authorized playbooks instead of blindly repeating reminders.</li><li>Tracks promises, replies and payment state before acting again.</li><li>Escalates exceptions when human judgment is needed.</li></ul></article></div><div class="scenario"><strong>Example: what “follow through” means</strong><div class="timeline"><div class="event"><small>DAY 12</small><p>Invoice is overdue. The agent reviews the account and recent activity.</p></div><div class="event"><small>CONTEXT</small><p>The customer already promised payment Friday, so duplicate outreach is paused.</p></div><div class="event"><small>FRIDAY</small><p>No payment arrives. The agent selects the next authorized escalation.</p></div><div class="event"><small>OUTCOME</small><p>Payment detected → case closes. Exception → human review is requested.</p></div></div></div></div></section>
+<section><div class="wrap trust"><div><div class="eyebrow">Controlled autonomy</div><div class="quote">Recommend → Approve → Automate.</div><p class="sub">Agentic does not mean uncontrolled. TabBeagle is being designed so businesses can begin with recommendations and approvals, then grant more autonomy only to trusted, repeatable actions.</p></div><div class="trustbox"><div><b>Visibility</b><br>Know what the agent recommends, what it did and what changed.</div><div><b>Control</b><br>Pause follow-up, approve sensitive actions or take over a customer conversation.</div><div><b>Boundaries</b><br>Define tone, timing, escalation rules and which actions may run automatically.</div><div><b>History</b><br>Keep a clear activity trail around invoices, follow-up, promises and outcomes.</div></div></div></section>
+<section id="early-access"><div class="wrap cta"><div class="eyebrow">TabBeagle is in development</div><h2 class="title">Get paid without chasing customers.</h2><p class="sub">Join the early-access list. We are validating the AI Accounts Receivable Agent with freelancers and small businesses before opening broader access.</p>
 <form class="ea-form" id="earlyAccessForm">
 <label>Name<input name="name" required autocomplete="name" placeholder="Your name"></label>
 <label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@business.com"></label>
@@ -37,7 +42,7 @@ section{padding:76px 0}.title{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.
 <div class="success" id="success"><strong>You’re on the list.</strong><p>Thanks for your interest in TabBeagle. We’ll keep you posted as early access opens.</p></div>
 </div></section>
 </main>
-<footer class="wrap footer"><strong>TabBeagle</strong><span>© 2026 TabBeagle. Built for businesses that would rather do the work than chase the invoice.</span></footer>
+<footer class="wrap footer"><strong>TabBeagle</strong><span>© 2026 TabBeagle. Agentic AI for Accounts Receivable · Recommend → Approve → Automate.</span></footer>
 <script>
 const SUPABASE_URL='https://kbidusxzzuwmxsukqvpm.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_EKna_cKon5jPh8fWWyMstg_vPe4qofO';
@@ -54,34 +59,12 @@ document.getElementById('earlyAccessForm').addEventListener('submit',async funct
  try{
   const response=await fetch(SUPABASE_URL+'/rest/v1/early_access',{
    method:'POST',
-   headers:{
-    'apikey':SUPABASE_PUBLISHABLE_KEY,
-    'Content-Type':'application/json',
-    'Prefer':'return=minimal'
-   },
-   body:JSON.stringify({
-    name:String(f.get('name')||'').trim(),
-    email:String(f.get('email')||'').trim().toLowerCase(),
-    business_type:f.get('businessType'),
-    invoice_volume:f.get('invoiceVolume')
-   })
+   headers:{'apikey':SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+   body:JSON.stringify({name:String(f.get('name')||'').trim(),email:String(f.get('email')||'').trim().toLowerCase(),business_type:f.get('businessType'),invoice_volume:f.get('invoiceVolume')})
   });
-  if(!response.ok){
-   const detail=await response.text();
-   if(response.status===409 || detail.includes('duplicate key')){
-    throw new Error('That email is already on the early-access list.');
-   }
-   throw new Error('We could not add you right now. Please try again.');
-  }
-  form.style.display='none';
-  document.getElementById('success').style.display='block';
-  form.reset();
- }catch(err){
-  errorEl.textContent=err.message || 'We could not add you right now. Please try again.';
-  errorEl.style.display='block';
-  button.disabled=false;
-  button.textContent='Join Early Access';
- }
+  if(!response.ok){const detail=await response.text();if(response.status===409 || detail.includes('duplicate key')){throw new Error('That email is already on the early-access list.');}throw new Error('We could not add you right now. Please try again.');}
+  form.style.display='none';document.getElementById('success').style.display='block';form.reset();
+ }catch(err){errorEl.textContent=err.message || 'We could not add you right now. Please try again.';errorEl.style.display='block';button.disabled=false;button.textContent='Join Early Access';}
 });
 </script>
 </body></html>
