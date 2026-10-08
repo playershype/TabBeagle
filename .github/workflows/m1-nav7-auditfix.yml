@@ -1,0 +1,81 @@
+name: M1 Navigation7 safe transitive audit-fix experiment
+on:
+  push:
+    branches:
+      - codex/m1-nav7-auditfix-isolated
+    paths:
+      - .github/workflows/m1-nav7-auditfix.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  auditfix:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      npm_config_legacy_peer_deps: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Verify isolated experiment and tested baseline
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/m1-nav7-auditfix-isolated"
+          node -e "const p=require('./package.json');if(!p.dependencies.expo.startsWith('~54') || !p.dependencies['@react-navigation/native'].startsWith('^7')) throw Error('Unexpected base')"
+          npm ci --legacy-peer-deps --no-fund --no-audit
+          npm audit --omit=dev --json > before.json || true
+          node -e "let v=require('./before.json').metadata.vulnerabilities;console.log('AUDIT_BEFORE',JSON.stringify(v));if(v.total!==36||v.critical!==0)throw Error('Baseline changed, reassess')"
+      - name: Attempt ONLY non-force npm audit fix in security LAB
+        run: |
+          set -euo pipefail
+          npm audit fix --omit=dev --legacy-peer-deps --no-fund > /tmp/non-force-fix-result.txt 2>&1 || true
+          echo 'Non-force remediation attempted; assess actual lock changes and compatible test results.'
+          npm ci --legacy-peer-deps --no-fund --no-audit
+          npm audit --omit=dev --json > after.json || true
+          node - <<'NODE'
+          const before=require('./before.json').metadata.vulnerabilities;
+          const after=require('./after.json').metadata.vulnerabilities;
+          console.log('AUDIT_BEFORE',JSON.stringify(before));
+          console.log('AUDIT_AFTER',JSON.stringify(after));
+          console.log('REMAINING_DIRECT',Object.keys(require('./after.json').vulnerabilities||{}).filter(k=>require('./after.json').vulnerabilities[k].isDirect).join(','));
+          if(after.critical>0 || after.high>before.high || after.total>=before.total) throw Error('No safe security improvement: do not save changed lock');
+          NODE
+      - name: Verify JS tests and Expo54 compatibility
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+          npm run bundle:android
+          CI=1 npx expo prebuild --platform android --no-install
+          test -f android/gradlew
+      - name: Save ONLY tested dependency lock on experiment branch
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/m1-nav7-auditfix-isolated"
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "No changed dependency graph to persist"
+            exit 1
+          fi
+          git diff --cached --name-only
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(m1-security-lab): safe nonforce transitive dependency fixes after tests'
+          git push origin HEAD:refs/heads/codex/m1-nav7-auditfix-isolated
+      - name: Upload non-sensitive audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-Nav7-Auditfix-Evidence
+          path: |
+            mobile/before.json
+            mobile/after.json
+            mobile/package.json
+            mobile/package-lock.json
+          if-no-files-found: warn
