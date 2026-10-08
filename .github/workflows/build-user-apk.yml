@@ -1,5 +1,5 @@
 name: Build configured TabBeagle User APK
-# TEST Build 4: isolated password UI and Android versionCode validated
+# TEST Build 5: durable M1 retry + patched tar, isolated TEST only
 on:
   workflow_dispatch:
   push:
@@ -34,6 +34,16 @@ jobs:
       - run: npm ci
       - run: npm run check:env
       - run: npm test && npm run typecheck
+      - name: Confirm tar security override before native Android build
+        run: |
+          npm audit --omit=dev --json > m1-audit-build5.json || true
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const a=JSON.parse(fs.readFileSync('m1-audit-build5.json','utf8'));
+          if (!a.metadata?.vulnerabilities || !a.vulnerabilities) throw Error('npm audit incomplete');
+          if (a.vulnerabilities.tar) throw Error('Critical vulnerable tar dependency is still present');
+          console.log('M1_MOBILE_SECURITY',JSON.stringify(a.metadata.vulnerabilities));
+          NODE
       - name: Generate native project and embedded preview
         run: |
           CI=1 npx expo prebuild --platform android --no-install
@@ -47,9 +57,9 @@ jobs:
           BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
           "$BUILD_TOOLS/aapt" dump badging "$APK" | head -5
-          cp "$APK" ../TabBeagle-User-Milestone1-TEST.apk
+          cp "$APK" ../TabBeagle-User-TEST-Build5.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: TabBeagle-User-Milestone1-TEST
-          path: TabBeagle-User-Milestone1-TEST.apk
+          name: TabBeagle-User-TEST-Build5
+          path: TabBeagle-User-TEST-Build5.apk
           if-no-files-found: error
