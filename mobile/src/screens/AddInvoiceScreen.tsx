@@ -1,10 +1,12 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Crypto from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createInvoice, fetchCustomers } from '../lib/api';
-import { stableRequest } from '../lib/retry';
+import { clearPending, loadPending, persistRequest } from '../lib/retry';
+import { activePendingKey } from '../lib/pendingAccount';
 import { useOrganization } from '../lib/org';
 import { amountMinor, isDate, todayIn } from '../lib/aging';
 import type { Customer, RootStackParams } from '../types';
@@ -16,7 +18,29 @@ export default function AddInvoiceScreen({ navigation }: NativeStackScreenProps<
   const [number, setNumber] = useState(''); const [amount, setAmount] = useState('');
   const [issue, setIssue] = useState(() => todayIn(org.timezone)); const [due, setDue] = useState('');
   const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
-  const retry = useRef<{ payload: string; id: string }>(); const running = useRef(false);
+  const running = useRef(false);
+  // Restore the same draft and requestId after Android terminates during a save.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const key = await activePendingKey(org.id, 'invoice');
+      const pending = await loadPending(AsyncStorage, key);
+      if (!pending || !active || running.current) return;
+      const raw: unknown = JSON.parse(pending.payload);
+      if (typeof raw !== 'object' || raw === null) return;
+      const draft = raw as Record<string, unknown>;
+      if (draft.organizationId !== org.id || typeof draft.customerId !== 'string' ||
+          typeof draft.invoiceNumber !== 'string' || typeof draft.amountMinor !== 'number' ||
+          !Number.isSafeInteger(draft.amountMinor) || draft.amountMinor <= 0 ||
+          typeof draft.issueDate !== 'string' || typeof draft.dueDate !== 'string') return;
+      setCustomerId(draft.customerId);
+      setNumber(draft.invoiceNumber);
+      setAmount((draft.amountMinor / 100).toFixed(2));
+      setIssue(draft.issueDate);
+      setDue(draft.dueDate);
+    })().catch(() => { if (active) setError('Unable to restore an interrupted invoice draft. Do not create a new invoice until you verify the previous save.'); });
+    return () => { active = false; };
+  }, [org.id]);
   const load = useCallback(async () => {
     setError(null);
     try { setCustomers((await fetchCustomers(org.id)).filter(c => c.status === 'ACTIVE')); }
@@ -31,8 +55,11 @@ export default function AddInvoiceScreen({ navigation }: NativeStackScreenProps<
       if (!isDate(issue) || !isDate(due) || due < issue) throw new Error('Use valid dates (YYYY-MM-DD). Due date must be on or after issue date.');
       const data = { organizationId: org.id, customerId, invoiceNumber: number.trim(), amountMinor: amountMinor(amount), currency: 'USD' as const, issueDate: issue, dueDate: due };
       const payload = JSON.stringify(data);
-      retry.current = stableRequest(retry.current, payload, () => Crypto.randomUUID());
-      const saved = await createInvoice({ ...data, requestId: retry.current.id });
+      const pendingKey = await activePendingKey(org.id, 'invoice');
+      const pending = await persistRequest(AsyncStorage, pendingKey, payload, () => Crypto.randomUUID());
+      const saved = await createInvoice({ ...data, requestId: pending.id });
+      // Navigation must not fail if local cleanup fails; replay remains idempotent.
+      try { await clearPending(AsyncStorage, pendingKey, pending); } catch { /* safe stale replay */ }
       navigation.replace('InvoiceDetail', { invoiceId: saved.id });
     } catch (e) { setError(messageOf(e)); }
     finally { running.current = false; setBusy(false); }
