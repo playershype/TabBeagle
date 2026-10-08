@@ -7,7 +7,7 @@ on:
       - .github/workflows/m1-expo54-security-lab.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   sdk54-smoke:
     runs-on: ubuntu-latest
@@ -61,6 +61,32 @@ jobs:
             console.log('SDK54_CRITICAL_PACKAGES',JSON.stringify(Object.entries(x.vulnerabilities??{}).filter(([k,v])=>v.severity==='critical').map(([k])=>k)));
           }catch(e){console.log('AUDIT_REPORT_UNAVAILABLE',e.message);}
           NODE
+      - name: Commit validated upgrade to isolated LAB branch only
+        if: contains(github.event.head_commit.message, 'PERSIST_SDK54_LAB')
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-security-lab'
+          git add mobile/package.json mobile/package-lock.json
+          paths="$(git diff --cached --name-only)"
+          echo "$paths"
+          test -n "$paths"
+          if echo "$paths" | grep -Ev '^mobile/(package.json|package-lock.json)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-M1-Expo54-Isolated-Lab
+          path: |
+            mobile/package.json
+            mobile/package-lock.json
+            mobile/security-audit-sdk54.json
+          if-no-files-found: warn
+; then
+            echo 'Unexpected staging path'; exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(security-lab): pin SDK54 compatible dependency graph after successful smoke tests'
+          git push origin HEAD:refs/heads/codex/m1-expo54-security-lab
       - name: Upload dependency-only experiment evidence
         if: always()
         uses: actions/upload-artifact@v4
