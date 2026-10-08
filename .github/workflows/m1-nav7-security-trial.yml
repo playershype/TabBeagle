@@ -1,0 +1,81 @@
+name: M1 Expo54 React Navigation 7 dependency remediation trial
+on:
+  push:
+    branches:
+      - codex/m1-expo54-nav7-security-trial
+    paths:
+      - .github/workflows/m1-nav7-security-trial.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  nav7-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      npm_config_legacy_peer_deps: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Assert trial branch and baseline
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-nav7-security-trial'
+          node -e "const x=require('./package.json');if (!x.dependencies.expo.startsWith('~54')) process.exit(1)"
+      - name: Install tested Expo54 baseline
+        run: npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Upgrade React Navigation 6 to 7 (trial only)
+        run: |
+          set -euo pipefail
+          npm pkg set 'dependencies.@react-navigation/native=^7.5.0' 'dependencies.@react-navigation/native-stack=^7.20.0'
+          npm install --legacy-peer-deps --no-fund --no-audit
+          node -e "const x=require('./package.json');console.log('NAV7',x.dependencies['@react-navigation/native'],x.dependencies['@react-navigation/native-stack'])"
+      - name: Verify tests, types and Android JS compatibility
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Verify native Expo54 Android prebuild
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          test -f android/gradlew
+      - name: Audit remediated graph and require actual reduction
+        run: |
+          set -euo pipefail
+          npm audit --omit=dev --json > m1-nav7-audit.json || true
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const a=JSON.parse(fs.readFileSync('m1-nav7-audit.json','utf8'));
+          const v=a.metadata?.vulnerabilities;
+          if (!v) throw Error('Missing audit metadata');
+          console.log('M1_NAV7_DEPENDENCY_COUNTS',JSON.stringify(v));
+          console.log('M1_NAV7_DIRECT_FINDINGS',Object.keys(a.vulnerabilities).filter(k=>a.vulnerabilities[k].isDirect).join(','));
+          if(v.critical>0||v.total>=42||v.high>23) throw Error('Navigation trial did not improve risk inventory safely; do not persist');
+          NODE
+      - name: Persist upgraded dependency files only to isolated navigation trial branch
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-nav7-security-trial'
+          git add package.json package-lock.json
+          git diff --cached --name-only
+          git diff --cached --quiet && { echo 'No changed dependency files'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(m1-security-trial): lock tested React Navigation 7 dependencies'
+          git push origin HEAD:refs/heads/codex/m1-expo54-nav7-security-trial
+      - name: Upload traceable npm audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-Nav7-Trial-Audit
+          path: |
+            mobile/package.json
+            mobile/package-lock.json
+            mobile/m1-nav7-audit.json
+          if-no-files-found: warn
