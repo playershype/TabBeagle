@@ -16,6 +16,7 @@ jobs:
         env:
           BASE: https://tabbeagle-api-test-test.up.railway.app
           AUTH: https://gaileljkciseopfgwsbc.supabase.co
+          TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
           ORGANIZATION: 479d925c-7ed4-4479-9ef2-850c0607a048
           TEST_INVOICE: 365b1aa2-1da7-4bf2-9550-c3175406dcac
         run: |
@@ -43,7 +44,8 @@ jobs:
             const health=await fetch(base+'/api/health',{signal:AbortSignal.timeout(15000),redirect:'error'});
             console.log((health.status===200?'PASS ':'FAIL ')+'TEST Railway health '+health.status);
             if(health.status!==200) failed=true;
-            const settings=await fetch(process.env.AUTH+'/auth/v1/settings',{signal:AbortSignal.timeout(15000),redirect:'error'});
+            const settings=await fetch(process.env.AUTH+'/auth/v1/settings',{headers:{apikey:process.env.TEST_SUPABASE_PUBLISHABLE_KEY},signal:AbortSignal.timeout(15000),redirect:'error'});
+            console.log('TEST_AUTH_SETTINGS_HTTP_STATUS',settings.status);
             const auth=settings.status===200?await settings.json():null;
             const signupDisabled=auth?.disable_signup===true;
             console.log((signupDisabled?'PASS ':'FAIL ')+'TEST public signup globally disabled');
