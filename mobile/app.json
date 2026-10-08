@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "com.tabbeagle.user.preview",
-      "versionCode": 3,
+      "versionCode": 4,
       "allowBackup": false
     },
     "ios": {
