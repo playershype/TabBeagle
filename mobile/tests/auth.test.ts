@@ -14,8 +14,9 @@ test('Supabase client uses S256 PKCE, exchanges a verifier and restores its stor
     return new Response(JSON.stringify(response),{status:200,headers:{'Content-Type':'application/json'}});
   };
   const client=createAuthClient('https://project.supabase.co','test-public-key',storage,fetcher);
-  await client.auth.signInWithOtp({email:user.email,options:{emailRedirectTo:AUTH_REDIRECT}});
+  await client.auth.signInWithOtp({email:user.email,options:{emailRedirectTo:AUTH_REDIRECT,shouldCreateUser:false}});
   assert.equal(requests[0].body.code_challenge_method,'s256');
+  assert.equal(requests[0].body.should_create_user, false, 'TEST email link must not sign up users');
   assert.equal(typeof requests[0].body.code_challenge,'string');
   const result=await client.auth.exchangeCodeForSession('test-auth-code');
   assert.equal(result.error,null); assert.equal(result.data.session?.user.id,user.id);
