@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Crypto from 'expo-crypto';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createInvoice, fetchCustomers } from '../lib/api';
+import { stableRequest } from '../lib/retry';
 import { useOrganization } from '../lib/org';
 import { amountMinor, isDate, todayIn } from '../lib/aging';
 import type { Customer, RootStackParams } from '../types';
@@ -30,7 +31,7 @@ export default function AddInvoiceScreen({ navigation }: NativeStackScreenProps<
       if (!isDate(issue) || !isDate(due) || due < issue) throw new Error('Use valid dates (YYYY-MM-DD). Due date must be on or after issue date.');
       const data = { organizationId: org.id, customerId, invoiceNumber: number.trim(), amountMinor: amountMinor(amount), currency: 'USD' as const, issueDate: issue, dueDate: due };
       const payload = JSON.stringify(data);
-      if (retry.current?.payload !== payload) retry.current = { payload, id: Crypto.randomUUID() };
+      retry.current = stableRequest(retry.current, payload, () => Crypto.randomUUID());
       const saved = await createInvoice({ ...data, requestId: retry.current.id });
       navigation.replace('InvoiceDetail', { invoiceId: saved.id });
     } catch (e) { setError(messageOf(e)); }
