@@ -1,0 +1,95 @@
+name: M1 JJ SPA magic-link Android redirect fix (isolated LAB)
+on:
+  push:
+    branches:
+      - codex/m1-nav7-magiclink-scheme-fix-lab
+    paths:
+      - mobile/App.tsx
+      - mobile/src/lib/authCallback.ts
+      - mobile/src/screens/LoginScreen.tsx
+      - mobile/tests/auth.test.ts
+      - .github/workflows/m1-jjspa-magiclink-authfix-apk.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auth-fix-lab:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify isolated branch; require redirect fix source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-nav7-magiclink-scheme-fix-lab'
+          grep -F 'ExpoLinking.createURL(AUTH_CALLBACK_PATH)' src/screens/LoginScreen.tsx
+          grep -F 'callbackCode(url, expectedRedirect)' App.tsx
+      - name: Install tested Expo54 + React Navigation7 dependency graph
+        run: npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Verify callback security, application tests and TS
+        run: |
+          set -euo pipefail
+          npm run check:env
+          npm test
+          npm run typecheck
+      - name: Register isolated JJ SPA Android callback scheme
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const app = JSON.parse(fs.readFileSync('app.json','utf8'));
+          app.expo.name = 'TabBeagle JJ SPA Login Lab';
+          app.expo.slug = 'tabbeagle-jjspa-login-lab';
+          app.expo.scheme = 'tabbeaglenav7auth';
+          app.expo.android.package = 'com.tabbeagle.user.nav7authlab';
+          app.expo.android.versionCode = 1;
+          fs.writeFileSync('app.json', JSON.stringify(app,null,2));
+          console.log('TEST_EXPECTED_CALLBACK',app.expo.scheme + '://auth/callback');
+          console.log('TEST_UNIQUE_APP_ID',app.expo.android.package);
+          NODE
+      - name: Verify Android export and native callback registration
+        run: |
+          set -euo pipefail
+          npm run bundle:android
+          CI=1 npx expo prebuild --platform android --no-install
+          test -f android/gradlew
+          grep -F 'tabbeaglenav7auth' android/app/src/main/AndroidManifest.xml
+      - name: Build signed separate Android APK
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Verify APK contains JS, unique identity, deep link intent and valid signature
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          unzip -t "$APK" > /dev/null
+          unzip -l "$APK" | grep -F 'assets/index.android.bundle'
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.nav7authlab'"
+          "$BUILD_TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml | grep -F 'tabbeaglenav7auth'
+          cp "$APK" ../TabBeagle-JJSPA-MagicLink-Fix-LAB-NOT-FOR-PRODUCTION.apk
+          sha256sum ../TabBeagle-JJSPA-MagicLink-Fix-LAB-NOT-FOR-PRODUCTION.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-JJSPA-Authfix-Lab-APK
+          path: TabBeagle-JJSPA-MagicLink-Fix-LAB-NOT-FOR-PRODUCTION.apk
+          if-no-files-found: error
