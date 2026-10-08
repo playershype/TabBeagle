@@ -3,8 +3,6 @@ on:
   push:
     branches:
       - codex/m1-nav7-magiclink-deeplink-fix
-    paths:
-      - .github/workflows/m1-nav7-authlink-lab.yml
   workflow_dispatch:
 permissions:
   contents: read
