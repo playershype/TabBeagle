@@ -1,7 +1,9 @@
-export const AUTH_REDIRECT = 'tabbeagle://auth/callback';
+import app from '../../app.json';
+export const AUTH_REDIRECT = `${app.expo.scheme}://auth/callback`;
 export function callbackCode(value: string): string | null {
   const url = new URL(value);
-  if (url.protocol !== 'tabbeagle:' || url.hostname !== 'auth' || url.pathname !== '/callback') return null;
+  const expected = new URL(AUTH_REDIRECT);
+  if (url.protocol !== expected.protocol || url.hostname !== expected.hostname || url.pathname !== expected.pathname) return null;
   if (url.searchParams.has('error') || url.searchParams.has('error_description')) {
     throw new Error('The sign-in link expired or was rejected. Request a new link.');
   }
