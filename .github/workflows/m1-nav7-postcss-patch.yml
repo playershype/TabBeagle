@@ -1,0 +1,108 @@
+name: M1 Navigation7 patched PostCSS SDK54 isolated Android build
+on:
+  push:
+    branches:
+      - codex/m1-nav7-postcss-patch-lab
+    paths:
+      - .github/workflows/m1-nav7-postcss-patch.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  postcss-patch:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Confirm approved Nav7 LAB baseline
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/m1-nav7-postcss-patch-lab"
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          npm audit --omit=dev --json > before.json || true
+          node -e "const a=require('./before.json').metadata.vulnerabilities;console.log('PRE_PATCH_AUDIT',JSON.stringify(a));if(a.total!==36||a.critical!==0)throw Error('Baseline changed; do not patch')"
+      - name: Test compatible PostCSS patch on isolated LAB only
+        run: |
+          set -euo pipefail
+          npm pkg set 'overrides.postcss=8.5.23'
+          npm install --legacy-peer-deps --no-audit --no-fund
+          node -e "const p=require('./node_modules/postcss/package.json');console.log('POSTCSS_PATCH_VERSION',p.version);if(p.version!=='8.5.23')throw Error('Patch not applied')"
+          npm audit --omit=dev --json > after.json || true
+          node - <<'NODE'
+          const b=require('./before.json').metadata.vulnerabilities;
+          const a=require('./after.json').metadata.vulnerabilities;
+          console.log('POSTCSS_PRE',JSON.stringify(b));
+          console.log('POSTCSS_POST',JSON.stringify(a));
+          if(a.critical>0||a.high>b.high||a.total>=b.total)throw Error('Patch not a demonstrable risk reduction; do not persist');
+          NODE
+      - name: Full mobile tests and native release bundle
+        run: |
+          set -euo pipefail
+          npm run check:env
+          npm test
+          npm run typecheck
+          npm run bundle:android
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('app.json','utf8'));
+          p.expo.name='TabBeagle PostCSS Security Lab';
+          p.expo.slug='tabbeagle-postcss-lab';
+          p.expo.scheme='tabbeaglepostcsslab';
+          p.expo.android.package='com.tabbeagle.user.postcsslab';
+          p.expo.android.versionCode=1;
+          fs.writeFileSync('app.json',JSON.stringify(p,null,2));
+          console.log('POSTCSS_ISOLATED_PACKAGE',p.expo.android.package);
+          NODE
+          CI=1 npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Verify APK signature and isolate identity
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          unzip -l "$APK" | grep 'assets/index.android.bundle'
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.postcsslab'"
+          cp "$APK" ../TabBeagle-PostCSS-Patch-LAB-NOT-FOR-PRODUCTION.apk
+          sha256sum ../TabBeagle-PostCSS-Patch-LAB-NOT-FOR-PRODUCTION.apk
+      - name: Preserve tested dependency graph ONLY in experiment branch
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/m1-nav7-postcss-patch-lab"
+          git add package.json package-lock.json
+          git diff --cached --quiet && { echo 'Patch did not change graph'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(m1-security-lab): compatible PostCSS security patch after full Android build'
+          git push origin HEAD:refs/heads/codex/m1-nav7-postcss-patch-lab
+      - name: Upload sanitized reports and isolated APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-PostCSS-Nav7-Lab-Validated
+          path: |
+            mobile/before.json
+            mobile/after.json
+            mobile/package.json
+            mobile/package-lock.json
+            TabBeagle-PostCSS-Patch-LAB-NOT-FOR-PRODUCTION.apk
+          if-no-files-found: warn
