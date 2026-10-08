@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAuthClient } from '../src/lib/authClient';
-import { AUTH_REDIRECT } from '../src/lib/authCallback';
+import { AUTH_REDIRECT, callbackCode } from '../src/lib/authCallback';
+import app from '../app.json';
 test('Supabase client uses S256 PKCE, exchanges a verifier and restores its stored session', async () => {
   const values = new Map<string,string>();
   const storage = { getItem: (key:string) => values.get(key) ?? null, setItem: (key:string,value:string) => {values.set(key,value);}, removeItem:(key:string)=>{values.delete(key);} };
@@ -28,4 +29,13 @@ test('Supabase client uses S256 PKCE, exchanges a verifier and restores its stor
   assert.equal((await reopened.auth.getSession()).data.session?.user.id,user.id);
   await reopened.auth.signOut({scope:'local'}); reopened.auth.stopAutoRefresh();
   assert.equal((await reopened.auth.getSession()).data.session,null);
+});
+
+
+test('PKCE sign-in callback is derived from the exact Android app scheme', () => {
+  assert.equal(AUTH_REDIRECT, app.expo.scheme + '://auth/callback');
+  assert.equal(AUTH_REDIRECT, 'tabbeagleauthlab://auth/callback');
+  assert.equal(callbackCode(AUTH_REDIRECT + '?code=valid-on-this-device'), 'valid-on-this-device');
+  assert.equal(callbackCode('tabbeagle://auth/callback?code=old-app'), null);
+  assert.equal(callbackCode('tabbeaglenavlab://auth/callback?code=other-app'), null);
 });
