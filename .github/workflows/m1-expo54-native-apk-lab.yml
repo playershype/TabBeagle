@@ -1,0 +1,83 @@
+name: M1 Expo54 native APK isolated Security Lab
+on:
+  push:
+    branches:
+      - codex/m1-expo54-security-lab
+    paths:
+      - .github/workflows/m1-expo54-native-apk-lab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-lab:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Validate isolated LAB branch and SDK54
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-security-lab'
+          node -e "const p=require('./package.json'); if (!p.dependencies.expo.startsWith('~54')) process.exit(1)"
+      - name: Install locked dependencies
+        run: npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Verify TEST settings, tests, typecheck and JS bundle
+        run: |
+          set -euo pipefail
+          npm run check:env
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Differentiate LAB APK from stable Build 5
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('app.json','utf8'));
+          p.expo.name='TabBeagle Security Lab';
+          p.expo.slug='tabbeagle-security-lab';
+          p.expo.scheme='tabbeaglelab';
+          p.expo.android.package='com.tabbeagle.user.securitylab';
+          p.expo.android.versionCode=1;
+          fs.writeFileSync('app.json',JSON.stringify(p,null,2));
+          console.log('LAB_NATIVE_PACKAGE',p.expo.android.package,'LAB_CODE',p.expo.android.versionCode);
+          NODE
+      - name: Generate and compile native Android release
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Verify and copy distinct LAB APK
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          unzip -l "$APK" | grep 'assets/index.android.bundle'
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | head -8
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep 'name=com.tabbeagle.user.securitylab'
+          cp "$APK" ../TabBeagle-Expo54-SecurityLab-NOT-FOR-PRODUCTION.apk
+          sha256sum ../TabBeagle-Expo54-SecurityLab-NOT-FOR-PRODUCTION.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-M1-Expo54-SecurityLab-APK
+          path: TabBeagle-Expo54-SecurityLab-NOT-FOR-PRODUCTION.apk
+          if-no-files-found: error
