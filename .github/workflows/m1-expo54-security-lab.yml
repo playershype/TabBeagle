@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-security-lab'
-          git add mobile/package.json mobile/package-lock.json
+          git add package.json package-lock.json
           git diff --cached --name-only
           git diff --cached --quiet && { echo 'No new dependency changes'; exit 1; }
           git config user.name 'github-actions[bot]'
