@@ -1,5 +1,5 @@
 name: Build configured TabBeagle User APK
-# TEST-only APK: password auth verified after CI corrections
+# TEST Build 4: isolated password UI and Android versionCode validated
 on:
   workflow_dispatch:
   push:
@@ -15,7 +15,6 @@ jobs:
     environment: tabbeagle-test
     env:
       EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
-      EXPO_PUBLIC_TEST_PASSWORD_AUTH: enabled
       EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
       EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
     defaults:
