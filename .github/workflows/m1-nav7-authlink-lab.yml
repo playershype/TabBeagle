@@ -1,0 +1,85 @@
+name: M1 Nav7 TEST magic-link deep-link and OTP fallback LAB
+on:
+  push:
+    branches:
+      - codex/m1-nav7-magiclink-deeplink-fix
+    paths:
+      - .github/workflows/m1-nav7-authlink-lab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auth-link-lab:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      EXPO_PUBLIC_AUTH_SCHEME: tabbeagleauthlab
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Assert isolated lab branch and pinned auth URI scheme
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/m1-nav7-magiclink-deeplink-fix"
+          test "$EXPO_PUBLIC_AUTH_SCHEME" = "tabbeagleauthlab"
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          npm run check:env
+      - name: Test redirect parser, PKCE, email OTP fallback and prior mobile contracts
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Give auth-fix APK a distinct native name and exact link scheme
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const cfg=JSON.parse(fs.readFileSync('app.json','utf8'));
+          cfg.expo.name='TabBeagle Auth Link Lab';
+          cfg.expo.slug='tabbeagle-auth-link-lab';
+          cfg.expo.scheme=process.env.EXPO_PUBLIC_AUTH_SCHEME;
+          cfg.expo.android.package='com.tabbeagle.user.authlinklab';
+          cfg.expo.android.versionCode=1;
+          fs.writeFileSync('app.json',JSON.stringify(cfg,null,2));
+          if(cfg.expo.scheme!=='tabbeagleauthlab') throw Error('Android scheme mismatch');
+          console.log('EXPECTED_LAB_MAGICLINK_REDIRECT',cfg.expo.scheme+'://auth/callback');
+          console.log('LAB_PACKAGE',cfg.expo.android.package);
+          NODE
+      - name: Verify Android native handler and compile signed release
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          grep -R "tabbeagleauthlab" android/app/src/main/AndroidManifest.xml
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Verify signature, identity, JS asset
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          unzip -l "$APK" | grep 'assets/index.android.bundle'
+          TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$TOOLS/apksigner" verify --verbose "$APK"
+          "$TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.authlinklab'"
+          cp "$APK" ../TabBeagle-AuthLink-Lab-NOT-FOR-PRODUCTION.apk
+          sha256sum ../TabBeagle-AuthLink-Lab-NOT-FOR-PRODUCTION.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-M1-AuthLink-Lab-APK
+          path: TabBeagle-AuthLink-Lab-NOT-FOR-PRODUCTION.apk
+          if-no-files-found: error
