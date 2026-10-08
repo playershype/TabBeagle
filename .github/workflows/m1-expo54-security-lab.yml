@@ -19,12 +19,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Check isolation and original versions
+      - name: Check isolated branch and original versions
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-security-lab'
-          node -e "const x=require('./package.json'); console.log('ORIGINAL_EXPO',x.dependencies.expo,'ORIGINAL_RN',x.dependencies['react-native'])"
-      - name: Upgrade Expo and React Native together (isolated lab only)
+          node -e "const x=require('./package.json'); console.log('ORIGINAL_EXPO',x.dependencies.expo)"
+      - name: Generate Expo 54 aligned dependency lock (LAB only)
         env:
           npm_config_legacy_peer_deps: 'true'
         run: |
@@ -33,8 +33,8 @@ jobs:
           npm install --no-fund --no-audit
           CI=1 npx expo install --fix --npm
           npm install --package-lock-only --no-fund --no-audit
-          node -e "const x=require('./package.json'); console.log('UPGRADED_EXPO',x.dependencies.expo,'UPGRADED_RN',x.dependencies['react-native'],'REACT',x.dependencies.react)"
-      - name: Validate upgraded application
+          node -e "const x=require('./package.json'); console.log('UPGRADED_EXPO',x.dependencies.expo,'UPGRADED_RN',x.dependencies['react-native'])"
+      - name: Run tests, typecheck and Android JS bundle
         env:
           npm_config_legacy_peer_deps: 'true'
         run: |
@@ -42,52 +42,38 @@ jobs:
           npm test
           npm run typecheck
           npm run bundle:android
-      - name: Test native project generation
+      - name: Validate Expo 54 native Android prebuild
         env:
           npm_config_legacy_peer_deps: 'true'
         run: |
           set -euo pipefail
           CI=1 npx expo prebuild --platform android --no-install
           test -f android/gradlew
-      - name: Collect vulnerability snapshot
+      - name: Collect production dependency security inventory
         if: always()
         run: |
           npm audit --omit=dev --json > security-audit-sdk54.json || true
           node - <<'NODE'
-          const fs = require('fs');
+          const fs=require('fs');
           try {
-            const x=JSON.parse(fs.readFileSync('security-audit-sdk54.json','utf8'));
-            console.log('SDK54_DEP_AUDIT_COUNTS',JSON.stringify(x.metadata?.vulnerabilities??{}));
-            console.log('SDK54_CRITICAL_PACKAGES',JSON.stringify(Object.entries(x.vulnerabilities??{}).filter(([k,v])=>v.severity==='critical').map(([k])=>k)));
-          }catch(e){console.log('AUDIT_REPORT_UNAVAILABLE',e.message);}
+            const a=JSON.parse(fs.readFileSync('security-audit-sdk54.json','utf8'));
+            console.log('SDK54_DEP_AUDIT_COUNTS',JSON.stringify(a.metadata?.vulnerabilities??{}));
+            console.log('SDK54_CRITICAL_PACKAGES',JSON.stringify(Object.entries(a.vulnerabilities??{}).filter(([k,v])=>v.severity==='critical').map(([k])=>k)));
+          } catch(e){ console.log('AUDIT_REPORT_UNAVAILABLE',e.message) }
           NODE
-      - name: Commit validated upgrade to isolated LAB branch only
+      - name: Persist verified dependency files to LAB branch only
         if: contains(github.event.head_commit.message, 'PERSIST_SDK54_LAB')
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-security-lab'
           git add mobile/package.json mobile/package-lock.json
-          paths="$(git diff --cached --name-only)"
-          echo "$paths"
-          test -n "$paths"
-          if echo "$paths" | grep -Ev '^mobile/(package.json|package-lock.json)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: TabBeagle-M1-Expo54-Isolated-Lab
-          path: |
-            mobile/package.json
-            mobile/package-lock.json
-            mobile/security-audit-sdk54.json
-          if-no-files-found: warn
-; then
-            echo 'Unexpected staging path'; exit 1
-          fi
+          git diff --cached --name-only
+          git diff --cached --quiet && { echo 'No new dependency changes'; exit 1; }
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'chore(security-lab): pin SDK54 compatible dependency graph after successful smoke tests'
+          git commit -m 'chore(security-lab): pin tested Expo54 dependency graph'
           git push origin HEAD:refs/heads/codex/m1-expo54-security-lab
-      - name: Upload dependency-only experiment evidence
+      - name: Upload isolated test evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
