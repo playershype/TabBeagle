@@ -1,4 +1,5 @@
 name: Build configured TabBeagle User APK
+# TEST-only rebuild: improved rate-limit sign-in UX
 on:
   workflow_dispatch:
   push:
