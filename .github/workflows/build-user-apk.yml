@@ -1,6 +1,11 @@
 name: Build configured TabBeagle User APK
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - codex/android-first-persistent-flow
+    paths:
+      - .github/workflows/build-user-apk.yml
 permissions:
   contents: read
 jobs:
