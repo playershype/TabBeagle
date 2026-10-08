@@ -19,10 +19,11 @@ test('business timezone, remaining balance and currency separation',()=>{
   assert.equal(todayIn('America/Puerto_Rico',new Date('2026-10-01T02:00:00Z')),'2026-09-30');
   assert.deepEqual(outstandingByCurrency([invoice,{...invoice,currency:'EUR',outstanding_amount_minor:7000},{...invoice,payment_status:'PAID'}]),{USD:5000,EUR:7000});
 });
-test('only the exact PKCE callback route can exchange a code',()=>{
-  assert.equal(callbackCode('tabbeagle://auth/callback?code=abc'),'abc');
-  for(const url of ['https://evil.test/auth/callback?code=x','tabbeagle://other/callback?code=x','tabbeagle://auth/wrong?code=x']) assert.equal(callbackCode(url),null);
-  for(const url of ['tabbeagle://auth/callback?error=expired','tabbeagle://auth/callback','tabbeagle://auth/callback?code=a&code=b']) assert.throws(()=>callbackCode(url));
+test('only the exact PKCE callback route of the current APK can exchange a code',()=>{
+  const expected = 'tabbeagle://auth/callback';
+  assert.equal(callbackCode('tabbeagle://auth/callback?code=abc', expected),'abc');
+  for(const url of ['https://evil.test/auth/callback?code=x','tabbeagle://other/callback?code=x','tabbeagle://auth/wrong?code=x','tabbeaglenavlab://auth/callback?code=x']) assert.equal(callbackCode(url, expected),null);
+  for(const url of ['tabbeagle://auth/callback?error=expired','tabbeagle://auth/callback','tabbeagle://auth/callback?code=a&code=b']) assert.throws(()=>callbackCode(url, expected));
 });
 test('missing configuration and malformed API data are explicit failures',()=>{
   assert.equal(configurationErrors({}).length,3);
