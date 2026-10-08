@@ -55,12 +55,23 @@ async function main() {
   if (process.exitCode === 1) return;
   const a = orgA.data[0].id;
   const b = orgB.data[0].id;
+  // Verify that the two real signed-in users belong to the two designated
+  // isolated TEST tenants; don't accidentally certify arbitrary accounts.
+  check(orgA.data[0].name === 'PlayersHype' &&
+    a === '479d925c-7ed4-4479-9ef2-850c0607a048',
+    'Account A is the authorized PlayersHype TEST tenant');
+  check(orgB.data[0].name === 'JJ SPA' &&
+    b === '7da70daf-c1df-49b5-be80-f56fe3909043',
+    'Account B is the authorized JJ SPA TEST tenant');
   check(a !== b, 'Accounts belong to different organizations');
   if (process.exitCode === 1) return;
-  const [ownInvoices, forbiddenList, bInvoices] = await Promise.all([
+  const [ownInvoices, forbiddenList, bInvoices, ownCustomers, forbiddenCustomers, forbiddenReverse] = await Promise.all([
     request(tokens.a, 'GET', '/api/invoices?organizationId=' + encodeURIComponent(a)),
     request(tokens.b, 'GET', '/api/invoices?organizationId=' + encodeURIComponent(a)),
     request(tokens.b, 'GET', '/api/invoices?organizationId=' + encodeURIComponent(b)),
+    request(tokens.a, 'GET', '/api/customers?organizationId=' + encodeURIComponent(a)),
+    request(tokens.b, 'GET', '/api/customers?organizationId=' + encodeURIComponent(a)),
+    request(tokens.a, 'GET', '/api/invoices?organizationId=' + encodeURIComponent(b)),
   ]);
   check(ownInvoices.status === 200 && Array.isArray(ownInvoices.data) && ownInvoices.data.length > 0,
     'Account A can read its own invoices');
@@ -68,6 +79,12 @@ async function main() {
     'Account B reading account A invoice list receives an empty array');
   check(bInvoices.status === 200 && Array.isArray(bInvoices.data),
     'Account B can read its own invoice list');
+  check(forbiddenReverse.status === 200 && Array.isArray(forbiddenReverse.data) && forbiddenReverse.data.length === 0,
+    'Account A reading account B invoice list receives an empty array');
+  check(ownCustomers.status === 200 && Array.isArray(ownCustomers.data) && ownCustomers.data.length > 0,
+    'Account A can read its own customers');
+  check(forbiddenCustomers.status === 200 && Array.isArray(forbiddenCustomers.data) && forbiddenCustomers.data.length === 0,
+    'Account B reading account A customer list receives an empty array');
   if (process.exitCode === 1) return;
   const invoice = ownInvoices.data[0];
   const [ownDetail, forbiddenDetail] = await Promise.all([
