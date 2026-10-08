@@ -7,6 +7,7 @@ import { fetchInvoices } from '../lib/api';
 import { fmtMoney, outstandingByCurrency, daysOverdue, todayIn } from '../lib/aging';
 import { useOrganization } from '../lib/org';
 import { getSupabase } from '../lib/supabase';
+import { testPasswordAuthEnabled } from '../lib/config';
 import { Button, ErrorText, messageOf, ui } from '../components/UI';
 export default function DashboardScreen({ navigation }: NativeStackScreenProps<RootStackParams, 'Dashboard'>) {
   const org = useOrganization();
@@ -48,6 +49,9 @@ export default function DashboardScreen({ navigation }: NativeStackScreenProps<R
         <Text style={ui.subtitle}>{item.payment_status.replace('_', ' ')}{!['PAID','VOID'].includes(item.payment_status) ? ` · ${days > 0 ? `${days} days overdue` : days === 0 ? 'Due today' : 'Not yet due'}` : ''}</Text>
       </Pressable>;
     }}
-    ListFooterComponent={<Button title="Sign out" secondary onPress={signOut} />}
+    ListFooterComponent={<>
+      {testPasswordAuthEnabled && <Button title="Account security · Create TEST password" secondary onPress={() => navigation.navigate('AccountPassword')} />}
+      <Button title="Sign out" secondary onPress={signOut} />
+    </>}
   /></View>;
 }
