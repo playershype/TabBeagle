@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { getSupabase } from './supabase';
 import { config } from './config';
 import { customerSchema, invoiceSchema, organizationSchema } from '../types';
+import { transportMessage } from './retry';
 async function request<T>(path: string, schema: z.ZodType<T>, input?: unknown): Promise<T> {
   const { data, error } = await getSupabase().auth.getSession();
   if (error || !data.session) throw new Error('Sign in to continue.');
@@ -26,7 +27,8 @@ async function request<T>(path: string, schema: z.ZodType<T>, input?: unknown): 
     if (!parsed.success) throw new Error('The server returned an unexpected response. Please contact support.');
     return parsed.data;
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') throw new Error('Connection timed out. Retry with the same details; your record will not be duplicated.');
+    const safeTransportError = transportMessage(error);
+    if (safeTransportError) throw safeTransportError;
     throw error;
   } finally { clearTimeout(timer); }
 }
