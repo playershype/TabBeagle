@@ -1,9 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text } from 'react-native';
 import * as Crypto from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createCustomer } from '../lib/api';
-import { stableRequest } from '../lib/retry';
+import { clearPending, loadPending, persistRequest } from '../lib/retry';
+import { activePendingKey } from '../lib/pendingAccount';
 import { useOrganization } from '../lib/org';
 import type { RootStackParams } from '../types';
 import { Button, ErrorText, Field, Form, messageOf, ui } from '../components/UI';
@@ -11,7 +13,23 @@ export default function AddCustomerScreen({ navigation }: NativeStackScreenProps
   const org = useOrganization();
   const [name, setName] = useState(''); const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
-  const retry = useRef<{ payload: string; id: string }>(); const running = useRef(false);
+  const running = useRef(false);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const key = await activePendingKey(org.id, 'customer');
+      const pending = await loadPending(AsyncStorage, key);
+      if (!pending || !active || running.current) return;
+      const raw: unknown = JSON.parse(pending.payload);
+      if (typeof raw !== 'object' || raw === null) return;
+      const draft = raw as Record<string, unknown>;
+      if (draft.organizationId !== org.id || typeof draft.displayName !== 'string' ||
+          !(draft.billingEmail === null || typeof draft.billingEmail === 'string')) return;
+      setName(draft.displayName);
+      setEmail(draft.billingEmail ?? '');
+    })().catch(() => { if (active) setError('Unable to restore an interrupted customer draft. Verify the existing record before saving again.'); });
+    return () => { active = false; };
+  }, [org.id]);
   async function save() {
     if (running.current) return;
     running.current = true; setBusy(true); setError(null);
@@ -20,8 +38,10 @@ export default function AddCustomerScreen({ navigation }: NativeStackScreenProps
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) throw new Error('Enter a valid email or leave it empty.');
       const data = { organizationId: org.id, displayName: name.trim(), billingEmail: email.trim().toLowerCase() || null };
       const payload = JSON.stringify(data);
-      retry.current = stableRequest(retry.current, payload, () => Crypto.randomUUID());
-      await createCustomer({ ...data, requestId: retry.current.id });
+      const key = await activePendingKey(org.id, 'customer');
+      const pending = await persistRequest(AsyncStorage, key, payload, () => Crypto.randomUUID());
+      await createCustomer({ ...data, requestId: pending.id });
+      try { await clearPending(AsyncStorage, key, pending); } catch { /* harmless idempotent replay */ }
       navigation.goBack();
     } catch (e) { setError(messageOf(e)); }
     finally { running.current = false; setBusy(false); }
