@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "TabBeagle",
-    "slug": "tabbeagle-user",
-    "scheme": "tabbeagle",
+    "name": "TabBeagle Auth Link Lab",
+    "slug": "tabbeagle-auth-link-lab",
+    "scheme": "tabbeagleauthlab",
     "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/brand.png",
@@ -14,8 +14,8 @@
       "backgroundColor": "#F8FAFC"
     },
     "android": {
-      "package": "com.tabbeagle.user.preview",
-      "versionCode": 5,
+      "package": "com.tabbeagle.user.authlinklab",
+      "versionCode": 1,
       "allowBackup": false
     },
     "ios": {
