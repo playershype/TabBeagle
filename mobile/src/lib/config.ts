@@ -16,3 +16,6 @@ export const config = {
   anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
 };
 export const configErrors = configurationErrors(config);
+// Explicitly gated to the isolated Supabase TEST project; never enable by accident on production.
+export const testPasswordAuthEnabled = process.env.EXPO_PUBLIC_TEST_PASSWORD_AUTH === 'enabled'
+  && config.supabaseUrl === 'https://gaileljkciseopfgwsbc.supabase.co';
