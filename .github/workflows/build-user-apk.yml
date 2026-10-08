@@ -1,5 +1,5 @@
 name: Build configured TabBeagle User APK
-# TEST-only build: existing account password login with safe enrollment
+# TEST-only APK: password auth verified after CI corrections
 on:
   workflow_dispatch:
   push:
