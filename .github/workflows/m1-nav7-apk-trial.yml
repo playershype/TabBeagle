@@ -1,0 +1,85 @@
+name: M1 Expo54 Navigation7 isolated Android APK
+on:
+  push:
+    branches:
+      - codex/m1-expo54-nav7-security-trial
+    paths:
+      - .github/workflows/m1-nav7-apk-trial.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-navigation7:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify isolated navigation7 SDK54 dependency lock
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-nav7-security-trial'
+          node - <<'NODE'
+          const p=require('./package.json');
+          if (!p.dependencies.expo.startsWith('~54') || !p.dependencies['@react-navigation/native'].startsWith('^7') || !p.dependencies['@react-navigation/native-stack'].startsWith('^7')) throw Error('Not approved isolated trial dependencies');
+          console.log('TRIAL_EXPO',p.dependencies.expo,'NAV',p.dependencies['@react-navigation/native']);
+          NODE
+      - name: Install locked dependencies and check application
+        run: |
+          set -euo pipefail
+          npm ci --legacy-peer-deps --no-fund --no-audit
+          npm run check:env
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Set uniquely isolated package identity
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('app.json','utf8'));
+          p.expo.name='TabBeagle Navigation 7 Lab';
+          p.expo.slug='tabbeagle-navigation7-lab';
+          p.expo.scheme='tabbeaglenavlab';
+          p.expo.android.package='com.tabbeagle.user.nav7lab';
+          p.expo.android.versionCode=1;
+          fs.writeFileSync('app.json',JSON.stringify(p,null,2));
+          console.log('NAV7_PACKAGE',p.expo.android.package);
+          NODE
+      - name: Compile native Android release
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Verify APK signing identity and embedded JS
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          unzip -l "$APK" | grep 'assets/index.android.bundle'
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.nav7lab'"
+          cp "$APK" ../TabBeagle-Nav7-SecurityTrial-NOT-FOR-PRODUCTION.apk
+          sha256sum ../TabBeagle-Nav7-SecurityTrial-NOT-FOR-PRODUCTION.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-M1-Nav7-APK-Isolated
+          path: TabBeagle-Nav7-SecurityTrial-NOT-FOR-PRODUCTION.apk
+          if-no-files-found: error
