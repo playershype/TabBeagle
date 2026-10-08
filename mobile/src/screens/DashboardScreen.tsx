@@ -29,7 +29,7 @@ export default function DashboardScreen({ navigation }: NativeStackScreenProps<R
     contentContainerStyle={{ padding: 20, paddingBottom: 36 }} refreshControl={<RefreshControl refreshing={busy} onRefresh={load} />}
     ListHeaderComponent={<>
       <Text style={ui.title}>{org.name}</Text><Text style={ui.subtitle}>Your invoices, in one place.</Text>
-      {testPasswordAuthEnabled && <Text style={[ui.subtitle, { fontSize: 12 }]}>TEST Build 5 · Password access + safe retries</Text>}
+      {testPasswordAuthEnabled && <Text style={[ui.subtitle, { fontSize: 12 }]}>TEST Auth Link Lab · PKCE deep link</Text>}
       <ErrorText message={error} />
       {error && <Button title="Retry loading" secondary onPress={load} busy={busy} />}
       {invoices !== null && <View style={ui.card}><Text style={ui.label}>Outstanding balance{error ? ' · Last loaded' : ''}</Text>
