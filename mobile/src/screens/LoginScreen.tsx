@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Image, Text } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
 import { getSupabase } from '../lib/supabase';
-import { AUTH_REDIRECT } from '../lib/authCallback';
+import { AUTH_CALLBACK_PATH } from '../lib/authCallback';
 import { testPasswordAuthEnabled } from '../lib/config';
 import { Button, ErrorText, Field, Form, messageOf, ui } from '../components/UI';
 
@@ -31,7 +32,7 @@ export default function LoginScreen() {
         // Magic links are only for existing users: never create a new signup through this UI.
         const { error } = await getSupabase().auth.signInWithOtp({
           email: normalizedEmail,
-          options: { emailRedirectTo: AUTH_REDIRECT, shouldCreateUser: false },
+          options: { emailRedirectTo: ExpoLinking.createURL(AUTH_CALLBACK_PATH), shouldCreateUser: false },
         });
         if (error) throw error;
         setSent(true);
