@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, Linking, Text, View } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabase } from './src/lib/supabase';
 import { configErrors } from './src/lib/config';
-import { callbackCode } from './src/lib/authCallback';
+import { AUTH_CALLBACK_PATH, callbackCode } from './src/lib/authCallback';
 import { fetchOrganizations, createOrganization } from './src/lib/api';
 import { OrganizationContext } from './src/lib/org';
 import type { Organization, RootStackParams } from './src/types';
@@ -88,10 +89,12 @@ function ConfiguredApp() {
     const supabase = getSupabase();
     let active = true;
     const consumed = new Set<string>();
+    // Registered in app.json at build time; differs for every isolated APK.
+    const expectedRedirect = ExpoLinking.createURL(AUTH_CALLBACK_PATH);
     async function consume(url: string | null) {
       if (!url) return;
       let code: string | null;
-      try { code = callbackCode(url); } catch (e) { if (active) setError(messageOf(e)); return; }
+      try { code = callbackCode(url, expectedRedirect); } catch (e) { if (active) setError(messageOf(e)); return; }
       if (!code || consumed.has(code)) return;
       consumed.add(code);
       try {
