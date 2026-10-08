@@ -1,0 +1,75 @@
+name: M1 JJ SPA repaired email deep-link Android TEST APK
+on:
+  push:
+    branches:
+      - codex/m1-jjspa-magic-link-fix-lab
+    paths:
+      - .github/workflows/m1-jjspa-magic-link-apk.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auth-link-lab:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify isolated TEST identity and exact callback
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/m1-jjspa-magic-link-fix-lab"
+          node - <<'NODE'
+          const p=require('./app.json').expo;
+          const wanted='tabbeagleauthlab://auth/callback';
+          if (p.scheme!=='tabbeagleauthlab' || p.android.package!=='com.tabbeagle.user.authlinklab') throw Error('Wrong isolated Android identity');
+          console.log('EXPECTED_TEST_CALLBACK',wanted);
+          console.log('ISOLATED_PACKAGE',p.android.package);
+          NODE
+      - name: Test Auth PKCE redirect and Android application
+        run: |
+          set -euo pipefail
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          npm run check:env
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Compile Android native release (does not replace Build5/Nav7)
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Verify APK signer, native callback intent scheme and bundle
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          unzip -l "$APK" | grep 'assets/index.android.bundle'
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.authlinklab'"
+          "$BUILD_TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml | grep -F 'tabbeagleauthlab'
+          cp "$APK" ../TabBeagle-JJSPA-AuthLink-TEST-NOT-FOR-PRODUCTION.apk
+          sha256sum ../TabBeagle-JJSPA-AuthLink-TEST-NOT-FOR-PRODUCTION.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-JJSPA-Repaired-Auth-Link-Lab
+          path: TabBeagle-JJSPA-AuthLink-TEST-NOT-FOR-PRODUCTION.apk
+          if-no-files-found: error
