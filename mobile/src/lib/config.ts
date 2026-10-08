@@ -16,6 +16,7 @@ export const config = {
   anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
 };
 export const configErrors = configurationErrors(config);
-// Explicitly gated to the isolated Supabase TEST project; never enable by accident on production.
-export const testPasswordAuthEnabled = process.env.EXPO_PUBLIC_TEST_PASSWORD_AUTH === 'enabled'
-  && config.supabaseUrl === 'https://gaileljkciseopfgwsbc.supabase.co';
+// Only the isolated Supabase TEST project can expose password enrollment.
+// Do not rely on a separate Expo flag that may be omitted in a distributed build.
+export const isIsolatedTestProject = (url?: string) => url === 'https://gaileljkciseopfgwsbc.supabase.co';
+export const testPasswordAuthEnabled = isIsolatedTestProject(config.supabaseUrl);
