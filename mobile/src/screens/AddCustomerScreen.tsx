@@ -3,6 +3,7 @@ import { Text } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createCustomer } from '../lib/api';
+import { stableRequest } from '../lib/retry';
 import { useOrganization } from '../lib/org';
 import type { RootStackParams } from '../types';
 import { Button, ErrorText, Field, Form, messageOf, ui } from '../components/UI';
@@ -19,7 +20,7 @@ export default function AddCustomerScreen({ navigation }: NativeStackScreenProps
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) throw new Error('Enter a valid email or leave it empty.');
       const data = { organizationId: org.id, displayName: name.trim(), billingEmail: email.trim().toLowerCase() || null };
       const payload = JSON.stringify(data);
-      if (retry.current?.payload !== payload) retry.current = { payload, id: Crypto.randomUUID() };
+      retry.current = stableRequest(retry.current, payload, () => Crypto.randomUUID());
       await createCustomer({ ...data, requestId: retry.current.id });
       navigation.goBack();
     } catch (e) { setError(messageOf(e)); }
