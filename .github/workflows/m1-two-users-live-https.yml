@@ -1,0 +1,32 @@
+name: M1 authorized two-user HTTPS tenant isolation (requires approved TEST sessions)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-tenant-auth:
+    runs-on: ubuntu-latest
+    environment: tabbeagle-test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Require two approved short-lived TEST bearer sessions
+        env:
+          TB_M1_TEST_A_BEARER: ${{ secrets.TB_M1_TEST_A_BEARER }}
+          TB_M1_TEST_B_BEARER: ${{ secrets.TB_M1_TEST_B_BEARER }}
+        run: |
+          set -euo pipefail
+          if test -z "$TB_M1_TEST_A_BEARER" || test -z "$TB_M1_TEST_B_BEARER" || test "$TB_M1_TEST_A_BEARER" = "$TB_M1_TEST_B_BEARER"; then
+            echo "::error::M1 BLOCKED: two distinct, authorized, unexpired TEST bearer sessions are not configured as environment secrets. No HTTP actions executed."
+            exit 2
+          fi
+          node --check backend/scripts/m1-tenant-auth-http.mjs
+          node backend/scripts/m1-tenant-auth-http.mjs
+      - name: No accidental persistence of credentials
+        if: always()
+        run: |
+          echo 'Credentials were provided only as step-scoped environment variables; do not store or copy user tokens into artifacts or logs.'

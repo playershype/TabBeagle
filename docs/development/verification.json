@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-07",
+  "base_commit": "c58f94bf380711eee4f350890d276ad00e732079",
+  "node": "24.19.0 (local); CI targets 22",
+  "checks": {
+    "mobile_tests": {
+      "passed": 6,
+      "failed": 0,
+      "auth_transport": "simulated; real SDK"
+    },
+    "backend_tests": {
+      "passed": 12,
+      "failed": 0,
+      "database": "PostgreSQL/PGlite with auth.uid shim and on-disk reopen"
+    },
+    "mobile_types": "PASS",
+    "backend_types": "PASS",
+    "next_production_build": "PASS",
+    "expo_native_generation": "PASS",
+    "android_hermes_export": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "mobile_dependency_audit": {
+    "info": 0,
+    "low": 1,
+    "moderate": 24,
+    "high": 41,
+    "critical": 1,
+    "total": 67
+  },
+  "backend_dependency_audit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "pending": [
+    "deployed Supabase migration and PostgREST contract",
+    "real email delivery and cold/warm native magic link",
+    "configured native APK build/install/force-stop/reopen",
+    "production dependency modernization/signing/storage review",
+    "full locked V1 agent and payment acceptance gates"
+  ]
+}

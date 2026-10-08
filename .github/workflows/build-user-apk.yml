@@ -1,64 +1,64 @@
-name: Build TabBeagle User APK
+name: Build configured TabBeagle User APK
+# TEST Build 5: durable M1 retry, Expo51-compatible dependencies; vulnerability triage OPEN
 on:
-  push:
-    branches: [android-user-build]
   workflow_dispatch:
+  push:
+    branches:
+      - codex/android-first-persistent-flow
+    paths:
+      - .github/workflows/build-user-apk.yml
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: tabbeagle-test
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+    defaults:
+      run:
+        working-directory: mobile
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Prepare clean User package
+      - run: npm ci
+      - run: npm run check:env
+      - run: npm test && npm run typecheck
+      - name: Record mobile dependency warnings (TEST only — M1 gate OPEN)
         run: |
-          rm -rf mobile && mkdir mobile
-          unzip -q tabbeagle-mobile.zip -d mobile
-          cd mobile/tabbeagle-mobile
-          npm install
-          mkdir -p assets
-          python3 - <<'PY'
-          import base64,json,pathlib
-          png=base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
-          for n in ("adaptive-icon.png","icon.png","splash.png"):
-              pathlib.Path("assets",n).write_bytes(png)
-          p=pathlib.Path("app.json")
-          d=json.loads(p.read_text())
-          e=d.setdefault("expo",{})
-          e["name"]="TabBeagle"
-          e["slug"]="tabbeagle-user"
-          a=e.setdefault("android",{})
-          a["package"]="com.tabbeagle.user.preview"
-          a["versionCode"]=2
-          p.write_text(json.dumps(d,indent=2))
-          PY
-          CI=1 npx expo prebuild --platform android
-      - name: Build and verify installable APK
+          npm audit --omit=dev --json > m1-audit-build5.json || true
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const report=JSON.parse(fs.readFileSync('m1-audit-build5.json','utf8'));
+          if (!report.metadata?.vulnerabilities) throw Error('Missing npm audit metadata');
+          console.log('M1_DEPENDENCIES_NOT_CERTIFIED',JSON.stringify(report.metadata.vulnerabilities));
+          NODE
+      - name: Generate native project and embedded preview
         run: |
-          cd mobile/tabbeagle-mobile/android
-          chmod +x gradlew
-          mkdir -p app/src/main/assets
-          cd ..
-          cat > metro.config.js <<'EOF'
-          const { getDefaultConfig } = require('expo/metro-config');
-          module.exports = getDefaultConfig(__dirname);
-          EOF
-          npx expo export:embed --platform android --dev false --entry-file App.tsx --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+          CI=1 npx expo prebuild --platform android --no-install
           cd android
-          ./gradlew assembleDebug
-          test -s app/src/main/assets/index.android.bundle
-          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -q 'assets/index.android.bundle'
-          APK=app/build/outputs/apk/debug/app-debug.apk
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --verbose --print-certs "$APK"
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/aapt" dump badging "$APK" | head -5
-          cp "$APK" "$GITHUB_WORKSPACE/TabBeagle-User-Installable.apk"
+          chmod +x gradlew
+          ./gradlew assembleRelease
+      - name: Verify APK identity and embedded bundle
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          unzip -l "$APK" | grep 'assets/index.android.bundle'
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | head -5
+          cp "$APK" ../TabBeagle-User-TEST-Build5.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: TabBeagle-User-Installable
-          path: TabBeagle-User-Installable.apk
+          name: TabBeagle-User-TEST-Build5
+          path: TabBeagle-User-TEST-Build5.apk
           if-no-files-found: error

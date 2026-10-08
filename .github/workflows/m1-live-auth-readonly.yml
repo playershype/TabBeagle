@@ -1,0 +1,77 @@
+name: M1 TEST auth settings and PostgREST contract (read-only)
+on:
+  push:
+    branches:
+      - codex/android-first-persistent-flow
+    paths:
+      - .github/workflows/m1-live-auth-readonly.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      TEST_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      TEST_RAILWAY_URL: https://tabbeagle-api-test-test.up.railway.app
+    steps:
+      - name: Inspect actual TEST Auth configuration and PostgREST relationship shape
+        run: |
+          node <<'JS'
+          const base=process.env.TEST_SUPABASE_URL;
+          const key=process.env.TEST_SUPABASE_PUBLISHABLE_KEY;
+          const abort=()=>AbortSignal.timeout(20000);
+          async function get(url, headers={}){
+            const r=await fetch(url,{headers,signal:abort(),redirect:'error'});
+            const body=await r.text();let data;
+            try{data=JSON.parse(body)}catch{data=null}
+            return {status:r.status,data,body};
+          }
+          let failed=false;
+          const assert=(ok,msg)=>{ console.log((ok?'PASS ':'FAIL ')+msg);if(!ok)failed=true; };
+          const auth=await get(base+'/auth/v1/settings',{apikey:key});
+          console.log('AUTH_SETTINGS_STATUS',auth.status);
+          if(auth.status===200 && auth.data){
+            // Print only relevant boolean fields. Never print keys/tokens/provider details.
+            const disabled=auth.data.disable_signup;
+            const leak=auth.data.security_and_protection?.enable_password_hibp_check
+                ?? auth.data.enable_password_hibp_check;
+            console.log('AUTH_DISABLE_SIGNUP', typeof disabled==='boolean' ? disabled : 'NOT_EXPOSED');
+            console.log('AUTH_LEAKED_PASSWORD_PROTECTION', typeof leak==='boolean' ? leak : 'NOT_EXPOSED');
+            if(disabled===false){
+              console.log('M1_AUTH_RISK: Public signup appears enabled on TEST. Do not certify.');
+              failed=true;
+            } else if(disabled===true){
+              console.log('M1_AUTH_PUBLIC_SIGNUP_DISABLED: VERIFIED');
+            } else {
+              console.log('M1_AUTH_SIGNUP_POLICY: UNKNOWN; manual Auth dashboard verification required');
+            }
+          }else{
+            console.log('M1_AUTH_SETTINGS_UNAVAILABLE; requires authorized dashboard check');
+          }
+          const rest=new URL(base+'/rest/v1/invoices');
+          rest.searchParams.set('select','id,customer:customers(display_name,billing_email),ar_case:ar_cases(id,state,version)');
+          rest.searchParams.set('limit','0');
+          const shape=await get(rest,{apikey:key,Accept:'application/json'});
+          console.log('POSTGREST_EMBED_TEST_STATUS',shape.status);
+          if(shape.status!==200){
+            const code=typeof shape.data?.code==='string'?shape.data.code:'UNSPECIFIED';
+            console.log('POSTGREST_EMBED_ERROR_CODE',code);
+          }
+          const permissionDenied=shape.status===401 && shape.data?.code==='42501';
+          if(permissionDenied) {
+            console.log('PASS anonymous PostgREST invoice access denied by table privileges');
+            console.log('POSTGREST_RELATIONSHIP_SHAPE: NOT VERIFIED WITHOUT VALID JWT');
+          } else {
+            assert(shape.status===200 && Array.isArray(shape.data),
+                   'Unexpected PostgREST response; inspect TEST role or relationship contract');
+            if(shape.status===200 && Array.isArray(shape.data)){
+              assert(shape.data.length===0,'anonymous caller sees no invoice data');
+              console.log('POSTGREST_RELATIONSHIP_SHAPE: VERIFIED');
+            }
+          }
+          const health=await get(process.env.TEST_RAILWAY_URL+'/api/health');
+          assert(health.status===200,'Railway TEST /api/health responds 200');
+          if(failed)process.exitCode=1;
+          JS
