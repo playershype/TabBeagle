@@ -73,7 +73,7 @@ jobs:
           BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
           "$BUILD_TOOLS/aapt" dump badging "$APK" | head -8
-          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep 'name=com.tabbeagle.user.securitylab'
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.securitylab'"
           cp "$APK" ../TabBeagle-Expo54-SecurityLab-NOT-FOR-PRODUCTION.apk
           sha256sum ../TabBeagle-Expo54-SecurityLab-NOT-FOR-PRODUCTION.apk
       - uses: actions/upload-artifact@v4
