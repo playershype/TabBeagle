@@ -8,6 +8,7 @@ import { Button, ErrorText, Field, Form, messageOf, ui } from '../components/UI'
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailCode, setEmailCode] = useState('');
   const [method, setMethod] = useState<'password' | 'link'>(testPasswordAuthEnabled ? 'password' : 'link');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -34,6 +35,7 @@ export default function LoginScreen() {
           options: { emailRedirectTo: AUTH_REDIRECT, shouldCreateUser: false },
         });
         if (error) throw error;
+        setEmailCode('');
         setSent(true);
       }
     } catch (e) {
@@ -48,14 +50,47 @@ export default function LoginScreen() {
       }
     } finally { running.current = false; setBusy(false); }
   }
+  // Optional TEST fallback when an email client does not hand a deep link to Android.
+  // Supabase's Magic Link email template must include {{ .Token }} to show a code.
+  async function verifyEmailCode() {
+    if (running.current) return;
+    if (!/^[0-9]{6,8}$/.test(emailCode.trim())) {
+      setError('Enter the numeric code shown in your newest email.');
+      return;
+    }
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim())) {
+      setError('Enter the same work email that received the code.');
+      return;
+    }
+    running.current = true; setBusy(true); setError(null);
+    try {
+      const { error } = await getSupabase().auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: emailCode.trim(),
+        type: 'email',
+      });
+      if (error) throw error;
+      setEmailCode('');
+      setSent(false);
+    } catch {
+      // Codes are one-time and short-lived; never log the token or response.
+      setError('The email code could not be verified. Use the newest code for this account.');
+    } finally {
+      running.current = false; setBusy(false);
+    }
+  }
   return <Form>
     <Image source={require('../../assets/brand.png')} accessibilityLabel="TabBeagle" style={{ width: 128, height: 128, alignSelf: 'center', marginTop: 36, marginBottom: 24, borderRadius: 24 }} />
     <Text style={ui.title}>Welcome to TabBeagle</Text>
     <Text style={ui.subtitle}>Get paid without chasing customers.</Text>
     {testPasswordAuthEnabled && <Text style={ui.subtitle}>Private TEST access for existing accounts. No public registration.</Text>}
-    <Field label="Work email" value={email} onChangeText={value => { setEmail(value); setSent(false); setError(null); setRateLimited(false); }} autoCapitalize="none" keyboardType="email-address" autoComplete="email" editable={!busy} />
+    <Field label="Work email" value={email} onChangeText={value => { setEmail(value); setSent(false); setEmailCode(''); setError(null); setRateLimited(false); }} autoCapitalize="none" keyboardType="email-address" autoComplete="email" editable={!busy} />
     {method === 'password' && testPasswordAuthEnabled && <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoCorrect={false} autoCapitalize="none" autoComplete="current-password" editable={!busy} />}
-    {method === 'link' && sent && <Text style={[ui.subtitle, { marginTop: 20 }]}>Check your inbox. Open the newest sign-in link on this device.</Text>}
+    {method === 'link' && sent && <>
+      <Text style={[ui.subtitle, { marginTop: 20 }]}>Open the newest sign-in link on this device using the same TabBeagle app that requested it. If the email also shows a code, enter it here instead.</Text>
+      <Field label="Email verification code (if shown)" value={emailCode} onChangeText={setEmailCode} keyboardType="number-pad" autoCapitalize="none" maxLength={8} editable={!busy} />
+      <Button title="Verify email code" secondary onPress={verifyEmailCode} busy={busy} disabled={!/^[0-9]{6,8}$/.test(emailCode.trim())} />
+    </>}
     <ErrorText message={error} />
     <Button title={method === 'password' ? 'Sign in with password' : sent ? 'Send a new link' : 'Send sign-in link'} onPress={signIn} busy={busy} disabled={method === 'link' && rateLimited} />
     {testPasswordAuthEnabled && <>
