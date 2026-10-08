@@ -8,6 +8,7 @@ on:
       - mobile/src/lib/authCallback.ts
       - mobile/src/screens/LoginScreen.tsx
       - mobile/tests/auth.test.ts
+      - mobile/tests/domain.test.ts
       - .github/workflows/m1-jjspa-magiclink-authfix-apk.yml
   workflow_dispatch:
 permissions:
