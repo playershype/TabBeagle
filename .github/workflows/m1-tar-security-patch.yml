@@ -1,0 +1,64 @@
+name: M1 TEST — targeted tar security remediation
+on:
+  push:
+    branches: [codex/android-first-persistent-flow]
+    paths:
+      - .github/workflows/m1-tar-security-patch.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.ref == 'refs/heads/codex/android-first-persistent-flow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Apply targeted patched transitive tar override
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm pkg set overrides.tar=7.5.21
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-fund
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Confirm critical tar vulnerability no longer present
+        working-directory: mobile
+        run: |
+          npm audit --omit=dev --json > ../m1-tar-post-audit.json || true
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const a=JSON.parse(fs.readFileSync('../m1-tar-post-audit.json'));
+          if (!a.metadata?.vulnerabilities || !a.vulnerabilities) throw Error('Incomplete audit result');
+          console.log('M1_PATCHED_AUDIT_COUNTS',JSON.stringify(a.metadata.vulnerabilities));
+          if (a.vulnerabilities.tar) throw Error('tar vulnerabilities persist; abort commit');
+          console.log('TAR_CRITICAL_FIX_VERIFIED');
+          NODE
+      - name: Limit change scope and commit to existing TEST branch only
+        env:
+          EXPECTED_BRANCH: codex/android-first-persistent-flow
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/${EXPECTED_BRANCH}"
+          git add mobile/package.json mobile/package-lock.json
+          git diff --cached --name-only | grep -q '^mobile/package'
+          if git diff --cached --name-only | grep -Ev '^mobile/(package.json|package-lock.json)$'; then
+            echo 'Unexpected file changes'; exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(M1): patch vulnerable node-tar transitively in TEST mobile dependencies'
+          git push origin HEAD:refs/heads/codex/android-first-persistent-flow
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: M1-targeted-tar-remediation-report
+          path: m1-tar-post-audit.json
+          if-no-files-found: ignore
