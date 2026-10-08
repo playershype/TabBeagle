@@ -1,0 +1,77 @@
+name: M1 JJ SPA Magic Link Android Auth Fix Lab
+on:
+  push:
+    branches:
+      - codex/m1-nav7-jjspa-magiclink-fix
+    paths:
+      - .github/workflows/m1-jjspa-authfix-apk.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-authfix:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify TEST-only package scheme and exact callback
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/m1-nav7-jjspa-magiclink-fix"
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=require('./app.json').expo;
+          const redirect=fs.readFileSync('./src/lib/authCallback.ts','utf8');
+          if(p.scheme!=='tabbeagleauthlab'||p.android.package!=='com.tabbeagle.user.authfixlab'||!redirect.includes("tabbeagleauthlab://auth/callback"))throw Error('Android scheme and PKCE callback mismatch');
+          if(p.android.package==='com.tabbeagle.user.nav7lab'||p.android.package==='com.tabbeagle.user.preview')throw Error('App would overwrite user-tested build');
+          console.log('PASS DISTINCT_AUTH_TEST_PACKAGE',p.android.package);
+          console.log('PASS AUTH_CALLBACK_SCHEME',p.scheme);
+          NODE
+      - name: Locked dependencies and mobile regression tests
+        run: |
+          set -euo pipefail
+          npm ci --legacy-peer-deps --no-fund --no-audit
+          npm run check:env
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Build isolated native Android APK
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Verify signing, deep-link intent and standalone identity
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          unzip -l "$APK" | grep -F 'assets/index.android.bundle'
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.authfixlab'"
+          "$BUILD_TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml | grep -F 'tabbeagleauthlab'
+          cp "$APK" ../TabBeagle-JJSPA-AuthFix-LAB-NOT-FOR-PRODUCTION.apk
+          sha256sum ../TabBeagle-JJSPA-AuthFix-LAB-NOT-FOR-PRODUCTION.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-JJSPA-AuthFix-LAB-APK
+          path: TabBeagle-JJSPA-AuthFix-LAB-NOT-FOR-PRODUCTION.apk
+          if-no-files-found: error
