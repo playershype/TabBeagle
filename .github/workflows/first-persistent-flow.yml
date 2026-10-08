@@ -65,3 +65,40 @@ jobs:
           test_status 401 "invoices with invalid JWT" -H "Authorization: Bearer m1-invalid-test-token" "$API_URL/api/invoices?organizationId=479d925c-7ed4-4479-9ef2-850c0607a048"
           test_status 401 "invoice write without auth" -X POST -H 'Content-Type: application/json' --data '{}' "$API_URL/api/invoices"
           test_status 401 "invoice write with invalid JWT" -X POST -H 'Authorization: Bearer m1-invalid-test-token' -H 'Content-Type: application/json' --data '{}' "$API_URL/api/invoices"
+
+  mobile-dependency-audit:
+    # Evidence-gathering only; review findings before any breaking Expo upgrades.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/android-first-persistent-flow'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - name: Produce production dependency vulnerability inventory
+        run: |
+          npm audit --omit=dev --json > dependency-audit-m1.json || true
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync('dependency-audit-m1.json','utf8'));
+          if (!data.metadata?.vulnerabilities || !data.vulnerabilities) {
+            throw new Error('npm audit report incomplete; do not certify dependencies');
+          }
+          console.log('PRODUCTION_DEP_AUDIT_COUNTS', JSON.stringify(data.metadata.vulnerabilities));
+          const items = Object.entries(data.vulnerabilities)
+            .map(([name,v]) => ({name,severity:v.severity,isDirect:v.isDirect,fixAvailable:v.fixAvailable,via:v.via?.filter(x=>typeof x==='object').map(x=>x.name)}))
+            .sort((a,b)=>({critical:0,high:1,moderate:2,low:3}[a.severity]??4)-({critical:0,high:1,moderate:2,low:3}[b.severity]??4));
+          console.log('PRODUCTION_DEP_DIRECT_FINDINGS',JSON.stringify(items.filter(x=>x.isDirect)));
+          console.log('PRODUCTION_DEP_TOP_FINDINGS',JSON.stringify(items.slice(0,20)));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-M1-Mobile-Dependency-Audit
+          path: mobile/dependency-audit-m1.json
+          if-no-files-found: error
