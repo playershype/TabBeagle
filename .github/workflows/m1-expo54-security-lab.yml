@@ -1,0 +1,73 @@
+name: M1 Expo 54 isolated compatibility experiment
+on:
+  push:
+    branches:
+      - codex/m1-expo54-security-lab
+    paths:
+      - .github/workflows/m1-expo54-security-lab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sdk54-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check isolation and original versions
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-expo54-security-lab'
+          node -e "const x=require('./package.json'); console.log('ORIGINAL_EXPO',x.dependencies.expo,'ORIGINAL_RN',x.dependencies['react-native'])"
+      - name: Upgrade Expo and React Native together (isolated lab only)
+        env:
+          npm_config_legacy_peer_deps: 'true'
+        run: |
+          set -euo pipefail
+          npm pkg set 'dependencies.expo=~54.0.0' 'dependencies.react=19.1.0' 'dependencies.react-native=0.81.5'
+          npm install --no-fund --no-audit
+          CI=1 npx expo install --fix --npm
+          npm install --package-lock-only --no-fund --no-audit
+          node -e "const x=require('./package.json'); console.log('UPGRADED_EXPO',x.dependencies.expo,'UPGRADED_RN',x.dependencies['react-native'],'REACT',x.dependencies.react)"
+      - name: Validate upgraded application
+        env:
+          npm_config_legacy_peer_deps: 'true'
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Test native project generation
+        env:
+          npm_config_legacy_peer_deps: 'true'
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          test -f android/gradlew
+      - name: Collect vulnerability snapshot
+        if: always()
+        run: |
+          npm audit --omit=dev --json > security-audit-sdk54.json || true
+          node - <<'NODE'
+          const fs = require('fs');
+          try {
+            const x=JSON.parse(fs.readFileSync('security-audit-sdk54.json','utf8'));
+            console.log('SDK54_DEP_AUDIT_COUNTS',JSON.stringify(x.metadata?.vulnerabilities??{}));
+            console.log('SDK54_CRITICAL_PACKAGES',JSON.stringify(Object.entries(x.vulnerabilities??{}).filter(([k,v])=>v.severity==='critical').map(([k])=>k)));
+          }catch(e){console.log('AUDIT_REPORT_UNAVAILABLE',e.message);}
+          NODE
+      - name: Upload dependency-only experiment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-M1-Expo54-Isolated-Lab
+          path: |
+            mobile/package.json
+            mobile/package-lock.json
+            mobile/security-audit-sdk54.json
+          if-no-files-found: warn
