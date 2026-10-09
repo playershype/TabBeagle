@@ -57,7 +57,6 @@ RC1 deliberately has the unique deep-link scheme `tabbeaglerc01://` so installat
 **Final verified result**: [GitHub Actions run 37931083943](https://github.com/playershype/TabBeagle/actions/runs/37931083943) **SUCCESS** for BOTH jobs. Exact tested source commit `7a1439a7cc8d9faa83b4356476584909d566575a` (unchanged application code/locks after that run). APK Android package `com.tabbeagle.user.v01rc1test`, name `TabBeagle RC TEST`, Android display version `0.1.0`, custom isolated URI scheme `tabbeaglerc01://`, with an `application-icon` resource confirmed by aapt. Signed and verified with Android apksigner. This is a CI TEST signature, not a Play Store production signing claim.
 
 - Valid GitHub artifact **#11617335024**: `TabBeagle-v0.1-RC1-TEST-SIGNED-APK` (contains both the **signed 65 MB APK** and audit JSON; compressed artifact approximately 30 MB).
-- APK filename: `TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-FOR-PRODUCTION.apk` (the actual GitHub filename uses `NOT-PRODUCTION`, see below for canonical filename).
 - **Canonical exact artifact filename:** `TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk`.
 - Verified SHA-256: `f2ad40751d1a7c185ebfd8c2d92a4ca7ea2ab6b2cf834ab5fb2cb95495af354a`. SHA matched both the GitHub Actions build output and independently extracted APK file in the working container.
 - Android: **23/23 tests PASS**, `npm run check:env` PASS, typecheck PASS, Android JS export PASS, Gradle native release build PASS, package/version/label/icon/scheme/signature PASS.
