@@ -1,0 +1,111 @@
+name: M1 Native HTTPS cross-tenant security probe TEST APK
+on:
+  push:
+    branches:
+      - codex/m1-https-ondevice-probe-lab
+    paths:
+      - mobile/App.tsx
+      - mobile/src/lib/authCallback.ts
+      - mobile/src/screens/LoginScreen.tsx
+      - mobile/tests/auth.test.ts
+      - mobile/tests/emailProof.test.ts
+      - mobile/src/lib/emailProof.ts
+      - mobile/src/lib/tenantProbe.ts
+      - mobile/tests/tenantProbe.test.ts
+      - mobile/src/screens/TenantProbeScreen.tsx
+      - mobile/src/screens/DashboardScreen.tsx
+      - mobile/src/types.ts
+      - .github/workflows/m1-https-ondevice-probe-lab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-auth-lab:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Confirm isolation and locked SDK54 plus Navigation7
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-https-ondevice-probe-lab'
+          node - <<'NODE'
+          const p=require('./package.json');
+          if(!p.dependencies.expo.startsWith('~54') || !p.dependencies['@react-navigation/native'].startsWith('^7'))throw Error('Unexpected base');
+          NODE
+      - name: Install locked dependencies
+        run: npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Set uniquely identifiable TEST app and redirect scheme before bundle
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p=JSON.parse(fs.readFileSync('app.json','utf8'));
+          p.expo.name='TabBeagle M1 HTTPS Lab';
+          p.expo.slug='tabbeagle-m1-https-lab';
+          p.expo.scheme='tabbeaglehttpslab';
+          p.expo.android.package='com.tabbeagle.user.httpslab';
+          p.expo.android.versionCode=1;
+          fs.writeFileSync('app.json',JSON.stringify(p,null,2));
+          console.log('AUTH_TEST_PACKAGE',p.expo.android.package);
+          console.log('AUTH_TEST_ALLOWED_REDIRECT',p.expo.scheme+'://auth/callback');
+          NODE
+      - name: Run auth callback tests, tests, typecheck and Android JavaScript export
+        run: |
+          set -euo pipefail
+          npm run check:env
+          npm test
+          npm run typecheck
+          npm run bundle:android
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const app=fs.readFileSync('App.tsx','utf8');
+          const login=fs.readFileSync('src/screens/LoginScreen.tsx','utf8');
+          if(!app.includes("callbackCode(url, ExpoLinking.createURL('auth/callback'))") ||
+             !login.includes("emailRedirectTo: ExpoLinking.createURL('auth/callback')")) {
+             throw Error('Callback and outgoing email redirect must resolve to the same installed native scheme');
+          }
+          if(!login.includes("client.auth.verifyOtp") || !login.includes("parseEmailProof")) throw Error('Native-only email proof verification missing');
+          if(!app.includes('TenantProbeScreen') || !fs.readFileSync('src/screens/DashboardScreen.tsx','utf8').includes("navigate('TenantProbe')")) throw Error('HTTPS tenant QA screen missing');
+          if(!fs.readFileSync('src/lib/tenantProbe.ts','utf8').includes('EXPECTED_TEST_API')) throw Error('API origin pin missing');
+          NODE
+      - name: Generate unique Android app and native signed release
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Verify APK, callback scheme, signing and package identity
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          unzip -l "$APK" | grep 'assets/index.android.bundle'
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.httpslab'"
+          "$BUILD_TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml | grep 'tabbeaglehttpslab'
+          cp "$APK" ../TabBeagle-M1-HTTPS-SecurityProbe-TEST-NOT-FOR-PRODUCTION.apk
+          sha256sum ../TabBeagle-M1-HTTPS-SecurityProbe-TEST-NOT-FOR-PRODUCTION.apk
+      - name: Upload isolated HTTPS QA APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-M1-HTTPS-SecurityProbe-TEST-APK
+          path: TabBeagle-M1-HTTPS-SecurityProbe-TEST-NOT-FOR-PRODUCTION.apk
+          if-no-files-found: error
