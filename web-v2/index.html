@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TabBeagle — Get paid without chasing customers</title>
+  <meta name="description" content="TabBeagle is an accounts receivable agent for freelancers and small businesses. Track open invoices today; the follow-up agent is in development.">
+  <meta name="theme-color" content="#08182B">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/tabbeagle-app-icon.png" type="image/png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TabBeagle">
+  <meta property="og:title" content="TabBeagle — Get paid without chasing customers">
+  <meta property="og:description" content="An accounts receivable agent for small businesses that invoice customers. Track what is owed today; approve how the agent follows up.">
+  <meta property="og:image" content="assets/tabbeagle-app-icon.png">
+  <meta name="twitter:card" content="summary">
+  <style>
+    :root{
+      --navy:#08182B;
+      --navy-2:#0E2439;
+      --cyan:#25C5DF;
+      --cyan-ink:#0A6F80;   /* cyan for text on light backgrounds (5.5:1 on paper) */
+      --lime:#CAFF00;
+      --paper:#F6F8F5;
+      --white:#FFFFFF;
+      --ink:#0B1A2E;
+      --muted:#4A5A6E;      /* 6.6:1 on paper */
+      --line:#D9E1E8;
+      --warn-bg:#FFF6E5;
+      --warn-ink:#6B4300;
+      --radius:18px;
+      --max:1120px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+    @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:1.6;overflow-x:hidden}
+    img{max-width:100%;display:block}
+    a{color:inherit}
+    :focus-visible{outline:3px solid var(--cyan-ink);outline-offset:3px;border-radius:6px}
+    .skip{position:absolute;left:-9999px;top:8px;background:var(--lime);color:var(--navy);padding:10px 14px;border-radius:10px;font-weight:800;z-index:100}
+    .skip:focus{left:12px}
+    .wrap{width:min(var(--max),calc(100% - 32px));margin-inline:auto}
+    h1,h2,h3{color:var(--navy);line-height:1.08;letter-spacing:-.03em;margin:0}
+    h1{font-size:clamp(2.4rem,7vw,4.9rem);font-weight:850}
+    h2{font-size:clamp(1.9rem,4.4vw,3rem);font-weight:800;margin-bottom:14px}
+    h3{font-size:1.25rem;font-weight:750;letter-spacing:-.01em;margin-bottom:8px}
+    p{margin:0 0 14px}
+    .kicker{display:inline-block;font-size:.8rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan-ink)}
+    .lede{font-size:clamp(1.08rem,2.1vw,1.28rem);color:var(--muted);max-width:44rem}
+    section{padding:clamp(56px,9vw,104px) 0;border-top:1px solid var(--line)}
+    .section-head{max-width:46rem;margin-bottom:clamp(28px,4vw,44px)}
+    .section-head p{color:var(--muted)}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 20px;border-radius:12px;font:inherit;font-weight:800;text-decoration:none;border:2px solid transparent;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,background-color .15s ease}
+    .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:var(--lime);color:var(--navy);box-shadow:0 1px 0 rgba(8,24,43,.12)}
+    .btn-primary:hover{box-shadow:0 10px 26px rgba(202,255,0,.35)}
+    .btn-ghost{background:transparent;color:var(--navy);border-color:var(--navy)}
+    .btn-ghost:hover{background:var(--navy);color:var(--white)}
+    .btn[disabled],.btn[aria-disabled="true"]{opacity:.55;cursor:not-allowed;transform:none}
+
+    /* Header */
+    .site-header{position:sticky;top:0;z-index:40;background:rgba(246,248,245,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+    .nav{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--navy);font-weight:850;font-size:1.25rem;letter-spacing:-.02em}
+    .brand img{width:36px;height:36px;border-radius:10px}
+    .nav-links{display:none;gap:22px;font-size:.95rem;font-weight:600}
+    .nav-links a{text-decoration:none;color:var(--muted)}
+    .nav-links a:hover{color:var(--navy)}
+    .nav-actions{display:flex;align-items:center;gap:10px}
+    .nav-actions .btn{min-height:42px;padding:9px 14px;font-size:.92rem;white-space:nowrap}
+    .nav-signin{display:none}
+    @media (min-width:600px){.nav-signin{display:inline-flex}}
+    .signin-note{font-size:.8rem;color:var(--muted);max-width:9rem;line-height:1.25;display:none}
+    @media (min-width:960px){.nav-links{display:flex}.signin-note{display:block}}
+
+    /* Hero */
+    .hero{padding:clamp(40px,7vw,88px) 0 clamp(48px,7vw,80px);border-top:0;background:
+      radial-gradient(900px 420px at 92% -10%,rgba(37,197,223,.18),transparent 60%),
+      linear-gradient(180deg,var(--paper),var(--white))}
+    .hero-grid{display:grid;gap:44px;align-items:center}
+    @media (min-width:960px){.hero-grid{grid-template-columns:1.05fr .95fr;gap:56px}}
+    .status-pill{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:7px 12px;border-radius:999px;background:var(--white);border:1px solid var(--line);font-size:.85rem;font-weight:700;color:var(--navy)}
+    .status-pill i{width:9px;height:9px;border-radius:50%;background:var(--cyan)}
+    .hero h1{margin:16px 0 18px}
+    .hero h1 .hl{background:linear-gradient(transparent 62%,rgba(202,255,0,.85) 62%);padding:0 2px}
+    .hero .lede{margin-bottom:22px}
+    .hero-status{font-size:.95rem;color:var(--muted);border-left:3px solid var(--cyan);padding:6px 0 6px 14px;max-width:40rem}
+    .hero-ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+    .hero-ctas .btn{flex:0 1 auto}
+
+    /* Sample product panel */
+    figure.sample{margin:0;background:var(--navy);color:var(--white);border-radius:24px;padding:clamp(18px,3vw,26px);box-shadow:0 30px 70px rgba(8,24,43,.22);min-width:0}
+    .sample-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.12)}
+    .sample-top strong{font-size:.98rem}
+    .chip{font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:rgba(37,197,223,.16);color:#9AEAF6;border:1px solid rgba(37,197,223,.35)}
+    .totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+    .totals div{background:rgba(255,255,255,.06);border-radius:12px;padding:12px}
+    .totals span{display:block;font-size:.72rem;color:#B9C7D6;text-transform:uppercase;letter-spacing:.06em}
+    .totals b{display:block;font-size:1.05rem;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .totals .danger b{color:#FFD08A}
+    .buckets{display:grid;gap:8px;margin:6px 0 16px}
+    .bucket{display:grid;grid-template-columns:minmax(0,7.5rem) 1fr auto;gap:10px;align-items:center;font-size:.85rem;color:#D5E0EB}
+    .bar{height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+    .bar i{display:block;height:100%;background:var(--cyan);border-radius:999px}
+    .bar.warn i{background:#FFB547}
+    .bucket b{font-variant-numeric:tabular-nums}
+    table.rows{width:100%;border-collapse:collapse;font-size:.86rem}
+    table.rows th{text-align:left;font-weight:700;color:#B9C7D6;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.12)}
+    table.rows td{padding:10px 6px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+    table.rows td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .tag{display:inline-block;font-size:.72rem;font-weight:800;padding:3px 8px;border-radius:999px;background:rgba(255,181,71,.16);color:#FFD08A;white-space:nowrap}
+    .tag.ok{background:rgba(202,255,0,.14);color:var(--lime)}
+    .proposal{margin-top:16px;padding:14px;border-radius:14px;background:rgba(202,255,0,.07);border:1px dashed rgba(202,255,0,.45)}
+    .proposal small{display:block;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--lime)}
+    .proposal p{margin:6px 0 0;font-size:.9rem;color:#E6EEF6}
+    figcaption{font-size:.82rem;color:var(--muted);margin-top:12px}
+
+    /* Status legend */
+    .legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.88rem;color:var(--muted);margin-top:18px}
+    .legend span{display:inline-flex;align-items:center;gap:7px}
+    .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+    .dot.live{background:var(--lime);box-shadow:0 0 0 2px var(--navy) inset}
+    .dot.dev{background:var(--cyan)}
+    .dot.plan{background:transparent;border:2px solid var(--muted)}
+
+    /* Cards */
+    .grid{display:grid;gap:16px}
+    @media (min-width:640px){.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (min-width:960px){.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    .card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:24px;min-width:0}
+    .card p{color:var(--muted);margin:0}
+    .card .idx{font-size:.8rem;font-weight:800;color:var(--cyan-ink);letter-spacing:.08em;margin-bottom:12px;display:block}
+
+    /* Stages */
+    .stage{position:relative;display:flex;flex-direction:column;gap:10px}
+    .stage .state{align-self:flex-start;font-size:.74rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:5px 9px;border-radius:999px;border:1px solid var(--line);color:var(--navy);background:var(--paper)}
+    .stage.is-live .state{background:var(--lime);border-color:var(--lime)}
+    .stage.is-dev .state{background:#E2F8FC;border-color:#9ADDEA;color:var(--cyan-ink)}
+    .stage p{color:var(--muted);margin:0}
+    .stages-note{margin-top:20px;padding:16px 18px;border-radius:14px;background:var(--white);border:1px solid var(--line);color:var(--muted);font-size:.95rem}
+
+    /* Comparison */
+    .compare{display:grid;gap:16px}
+    @media (min-width:800px){.compare{grid-template-columns:1fr 1fr}}
+    .panel{border-radius:var(--radius);padding:26px;border:1px solid var(--line);background:var(--white);min-width:0}
+    .panel.agent{background:var(--navy);color:var(--white);border-color:var(--navy)}
+    .panel.agent h3{color:var(--white)}
+    .panel.agent p,.panel.agent li{color:#D3DEEA}
+    .panel ul{padding-left:20px;margin:14px 0 0;color:var(--muted)}
+    .panel li{margin:8px 0}
+    .panel.agent li::marker{color:var(--cyan)}
+    .rule{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86rem;background:var(--paper);border-radius:12px;padding:12px 14px;color:var(--ink);overflow-wrap:anywhere}
+    .panel.agent .rule{background:#0B2034;color:#C9F7FF}
+
+    /* Control */
+    .control-list{display:grid;gap:12px;list-style:none;padding:0;margin:0}
+    @media (min-width:800px){.control-list{grid-template-columns:1fr 1fr}}
+    .control-list li{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+    .control-list li p{color:var(--muted);margin:0}
+    .principle-note{margin-top:22px;color:var(--muted);font-size:.95rem;max-width:48rem}
+
+    /* Who */
+    .who h3{margin-bottom:6px}
+    .job{font-size:.8rem;font-weight:800;color:var(--cyan-ink);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;display:block}
+
+    /* Pricing */
+    .pricing{background:var(--white);border:1px dashed #AEBBC8;border-radius:var(--radius);padding:clamp(22px,4vw,34px)}
+    .pricing p{color:var(--muted);max-width:46rem}
+
+    /* FAQ */
+    details.faq{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:0 20px;margin-bottom:10px}
+    details.faq summary{cursor:pointer;list-style:none;padding:18px 0;font-weight:750;color:var(--navy);display:flex;justify-content:space-between;gap:16px;align-items:center;min-height:48px}
+    details.faq summary::-webkit-details-marker{display:none}
+    details.faq summary::after{content:"+";font-size:1.4rem;line-height:1;color:var(--cyan-ink);flex:0 0 auto}
+    details.faq[open] summary::after{content:"−"}
+    details.faq p{color:var(--muted);padding:0 0 18px;margin:0}
+
+    /* Early access form */
+    .ea{display:grid;gap:22px}
+    @media (min-width:960px){.ea{grid-template-columns:.9fr 1.1fr;align-items:start;gap:56px}}
+    .ea-copy ul{padding-left:20px;color:var(--muted)}
+    .ea-copy li{margin:8px 0}
+    form.ea-form{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:clamp(20px,3.5vw,32px);display:grid;gap:18px;min-width:0}
+    .field{display:grid;gap:7px;min-width:0}
+    .field label,.field legend{font-weight:750;color:var(--navy);font-size:.95rem}
+    .field .hint{font-size:.85rem;color:var(--muted);font-weight:400}
+    .field input:not([type=checkbox]),.field select,.field textarea{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:var(--white);border:1.5px solid #B9C5D1;border-radius:12px;padding:12px 14px;min-height:48px;min-width:0}
+    .field textarea{min-height:104px;resize:vertical}
+    .field input:not([type=checkbox]):focus,.field select:focus,.field textarea:focus{outline:3px solid rgba(10,111,128,.35);border-color:var(--cyan-ink)}
+    .field input[aria-invalid="true"],.field select[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:#B42318}
+    .err{font-size:.88rem;color:#B42318;font-weight:650;display:none}
+    .err.show{display:block}
+    .consent{display:flex;gap:12px;align-items:flex-start;font-size:.93rem;font-weight:500;color:var(--muted)}
+    .consent input[type=checkbox]{width:22px;height:22px;min-height:0;padding:0;margin:2px 0 0;flex:0 0 auto;accent-color:var(--navy)}
+    fieldset.field{border:0;padding:0;margin:0}
+    .hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+    .sr-only{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+    .form-status{border-radius:12px;padding:14px 16px;font-size:.95rem;display:none}
+    .form-status.show{display:block}
+    .form-status.preview{background:var(--warn-bg);color:var(--warn-ink);border:1px solid #F3D59B}
+    .form-status.ok{background:#EEFBD6;color:#1F3B00;border:1px solid #C6EC7A}
+    .form-status.bad{background:#FDECEA;color:#7A1B12;border:1px solid #F4B9B2}
+    .ea-form .btn{width:100%}
+    @media (min-width:600px){.ea-form .btn{width:auto;justify-self:start}}
+    .ea-form .fine{font-size:.85rem;color:var(--muted);margin:0}
+
+    /* Footer */
+    footer{background:var(--navy);color:#C9D5E2;padding:44px 0 36px;margin-top:0}
+    footer .cols{display:grid;gap:24px}
+    @media (min-width:800px){footer .cols{grid-template-columns:1.4fr 1fr 1fr}}
+    footer a{color:#E6F9FD}
+    footer h3{color:var(--white);font-size:1rem;margin-bottom:10px}
+    footer ul{list-style:none;padding:0;margin:0}
+    footer li{margin:6px 0}
+    footer .legal{margin-top:28px;padding-top:18px;border-top:1px solid rgba(255,255,255,.14);font-size:.85rem;color:#A9B8C9}
+    footer .brand{color:var(--white)}
+    footer .brand img{width:30px;height:30px}
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="TabBeagle home"><img src="assets/tabbeagle-app-icon.png" alt="" width="36" height="36">TabBeagle</a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#difference">Agent vs. reminders</a>
+      <a href="#control">Control</a>
+      <a href="#who">Who it's for</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <span class="signin-note" aria-hidden="true">Sign-in is invite-only for now</span>
+      <button class="btn btn-ghost nav-signin" type="button" disabled aria-describedby="signin-note">Sign in</button>
+      <a class="btn btn-primary" href="#early-access">Early access</a>
+    </div>
+  </div>
+  <p id="signin-note" class="sr-only">Sign-in is not public yet. Access to the test app is by invitation.</p>
+</header>
+
+<main id="main">
+
+<!-- HERO -->
+<section class="hero" id="top" style="border-top:0">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="kicker">AI accounts receivable agent</span>
+      <h1>Get paid without <span class="hl">chasing customers.</span></h1>
+      <p class="lede">TabBeagle keeps track of every open invoice, works out which one needs attention, and is being built to follow up within rules you approve. You stay in charge of what is sent and when.</p>
+      <p class="hero-status"><strong>Today:</strong> a working test build tracks customers, invoices and aging, with each organization's data kept separate. The agent that prioritizes and follows up is still in development.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#early-access">Join early access</a>
+        <a class="btn btn-ghost" href="#control">See how control works</a>
+      </div>
+      <div class="status-pill"><i aria-hidden="true"></i> Early access · invitation-only test app</div>
+    </div>
+
+    <figure class="sample" aria-labelledby="sample-title">
+      <div class="sample-top">
+        <strong id="sample-title">Receivables overview</strong>
+        <span class="chip">Sample data · not a real customer</span>
+      </div>
+      <div class="totals">
+        <div><span>Open</span><b>$5,470.50</b></div>
+        <div class="danger"><span>Overdue</span><b>$4,610.00</b></div>
+        <div><span>Open invoices</span><b>3</b></div>
+      </div>
+      <div class="buckets" role="img" aria-label="Aging: current $860.50; 1 to 30 days overdue $3,200.00; 31 to 60 days overdue $1,410.00">
+        <div class="bucket"><span>Not yet due</span><div class="bar"><i style="width:16%"></i></div><b>$860.50</b></div>
+        <div class="bucket"><span>1–30 days</span><div class="bar warn"><i style="width:58%"></i></div><b>$3,200.00</b></div>
+        <div class="bucket"><span>31–60 days</span><div class="bar warn"><i style="width:26%"></i></div><b>$1,410.00</b></div>
+      </div>
+      <table class="rows">
+        <caption class="sr-only">Sample open invoices</caption>
+        <thead><tr><th scope="col">Invoice</th><th scope="col">Status</th><th scope="col" class="num">Amount</th></tr></thead>
+        <tbody>
+          <tr><td>INV-2041 · Brightline Design</td><td><span class="tag">14 days late</span></td><td class="num">$3,200.00</td></tr>
+          <tr><td>INV-2047 · Mesa Consulting</td><td><span class="tag">41 days late</span></td><td class="num">$1,410.00</td></tr>
+          <tr><td>INV-2044 · Northstar Dental</td><td><span class="tag ok">Due in 3 days</span></td><td class="num">$860.50</td></tr>
+        </tbody>
+      </table>
+      <div class="proposal">
+        <small>Example of a future proposal · not active</small>
+        <p>Hold reminders to Brightline until the promised payment date, then re-check. Approval would be required before anything is sent.</p>
+      </div>
+    </figure>
+  </div>
+  <div class="wrap"><figcaption>Illustration with invented sample data. It is not a screenshot of a customer account or of the production app.</figcaption></div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem" aria-labelledby="problem-title">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">The problem</span>
+      <h2 id="problem-title">The money is already earned. It just isn't in the bank.</h2>
+      <p>Most small billing teams are not short on work. They are short on the follow-up work nobody bills for.</p>
+    </div>
+    <div class="grid two">
+      <article class="card"><span class="idx">01</span><h3>Overdue invoices go quiet</h3><p>A late payment often gets noticed when someone checks the bank balance, not on the day after the due date.</p></article>
+      <article class="card"><span class="idx">02</span><h3>Follow-up eats billable hours</h3><p>Writing the third reminder, remembering who promised what, and finding the right email thread takes time from client work.</p></article>
+      <article class="card"><span class="idx">03</span><h3>Records live in too many places</h3><p>Invoices in one tool, payment emails in another, promises in a notebook. Nobody has the full picture of a single case.</p></article>
+      <article class="card"><span class="idx">04</span><h3>Cash flow becomes a guess</h3><p>Without a clear aging view, next month's cash is an estimate built from memory and optimism.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">How it works</span>
+      <h2 id="how-title">Five stages. Only the first one is live in the test build.</h2>
+      <p>We show the whole loop so you can see what exists now and what we are still building. We do not present planned stages as finished features.</p>
+    </div>
+    <ol class="grid four" style="list-style:none;padding:0;margin:0">
+      <li class="card stage is-live"><span class="idx">01</span><span class="state">Available in test</span><h3>Track</h3><p>Customers, invoices and aging in one place, separated by organization.</p></li>
+      <li class="card stage is-dev"><span class="idx">02</span><span class="state">In development</span><h3>Prioritize</h3><p>Rank open cases by amount, age and payment history so the most important one comes first.</p></li>
+      <li class="card stage is-dev"><span class="idx">03</span><span class="state">In development</span><h3>Recommend</h3><p>Propose one specific next step and show the context behind it.</p></li>
+      <li class="card stage"><span class="idx">04</span><span class="state">Designed</span><h3>Authorize</h3><p>Sensitive messages and changes wait for a rule you approved or a person's sign-off.</p></li>
+      <li class="card stage"><span class="idx">05</span><span class="state">Planned</span><h3>Follow through</h3><p>Re-check each case after an action and escalate what needs a human decision.</p></li>
+    </ol>
+    <div class="legend" aria-label="Status key">
+      <span><i class="dot live" aria-hidden="true"></i> Available in test build</span>
+      <span><i class="dot dev" aria-hidden="true"></i> In development</span>
+      <span><i class="dot plan" aria-hidden="true"></i> Designed or planned</span>
+    </div>
+    <p class="stages-note">Test build access is by invitation. Nothing on this page sends messages to your customers, marks invoices as paid, or connects to a payment provider.</p>
+  </div>
+</section>
+
+<!-- DIFFERENCE -->
+<section id="difference" aria-labelledby="difference-title">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">Reminders vs. a controlled agent</span>
+      <h2 id="difference-title">A reminder fires on a date. An agent looks at the case first.</h2>
+      <p>Scheduled reminders are useful, and many tools already send them. The difference we are building is what happens when a customer has already replied, promised to pay, or disputed the invoice.</p>
+    </div>
+    <div class="compare">
+      <article class="panel">
+        <h3>Scheduled reminders</h3>
+        <div class="rule">IF invoice_overdue &gt; 7 days<br>THEN send_email(template_2)</div>
+        <ul>
+          <li>Fire on a date, whatever happened since.</li>
+          <li>Don't know that a customer already promised to pay.</li>
+          <li>Send the same template again and again.</li>
+          <li>Leave every next decision to you.</li>
+        </ul>
+      </article>
+      <article class="panel agent">
+        <h3>TabBeagle agent <span class="tag" style="margin-left:6px">In development</span></h3>
+        <div class="rule">OBSERVE → REASON → RECOMMEND → APPROVE → FOLLOW THROUGH</div>
+        <ul>
+          <li>Reads the invoice, the history and any promise to pay before proposing anything.</li>
+          <li>Chooses from playbooks you approve, including how firm the tone may be.</li>
+          <li>Waits on purpose when waiting is the better move.</li>
+          <li>Stops and asks you when a case looks unusual.</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- CONTROL -->
+<section id="control" aria-labelledby="control-title">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">Human control</span>
+      <h2 id="control-title">Recommend. Approve. Then automate what you trust.</h2>
+      <p>An agent that talks to your customers needs boundaries. These are the controls we are designing into the product from the start.</p>
+    </div>
+    <ul class="control-list">
+      <li><h3>Set the rules</h3><p>Choose the tone, timing limits and which playbooks the agent may use.</p></li>
+      <li><h3>Approve before anything goes out</h3><p>Customer messages and changes to an invoice wait for your sign-off until you choose to relax that rule for a specific, repeatable action.</p></li>
+      <li><h3>Pause or take over</h3><p>Stop follow-up on any customer, or pick up the conversation yourself.</p></li>
+      <li><h3>See every action</h3><p>An activity trail records what was proposed, who approved it, what was sent and what changed afterwards.</p></li>
+    </ul>
+    <p class="principle-note">These are the design commitments for the agent. For what works in the test build today, see the FAQ.</p>
+  </div>
+</section>
+
+<!-- WHO -->
+<section id="who" class="who" aria-labelledby="who-title">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">Who it's for</span>
+      <h2 id="who-title">Built for businesses that invoice customers after the work is done.</h2>
+      <p>The first customers we are looking for issue roughly 20 to 200 invoices a month and do their own collections.</p>
+    </div>
+    <div class="grid two">
+      <article class="card"><span class="job">Freelancers &amp; consultants</span><h3>Get the next follow-up off your plate</h3><p>You bill by project, and every late payment comes out of your week. You want follow-up that happens without you writing every email.</p></article>
+      <article class="card"><span class="job">Agencies</span><h3>Know who owes what, across every client</h3><p>Several clients, retainers and one person who remembers the promises. You want the case history in one place.</p></article>
+      <article class="card"><span class="job">Service businesses</span><h3>See what is open and what to do next</h3><p>You finish jobs before the invoice is paid. You want a clear list of what is overdue, what is due soon and what needs a call.</p></article>
+      <article class="card"><span class="job">Owner-operators with a bookkeeper</span><h3>Trust the aging numbers for cash decisions</h3><p>You need an accurate receivables view and a record of each follow-up before you make payroll or hiring decisions.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" aria-labelledby="pricing-title">
+  <div class="wrap">
+    <div class="pricing">
+      <span class="kicker">Pricing</span>
+      <h2 id="pricing-title" style="margin-top:10px">Pricing is being finalized.</h2>
+      <p>We will share pricing with early access members first, before it appears anywhere public. There is no checkout on this site and no price is final yet.</p>
+      <a class="btn btn-ghost" href="#early-access">Ask about early access</a>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" aria-labelledby="faq-title">
+  <div class="wrap" style="max-width:820px">
+    <div class="section-head">
+      <span class="kicker">FAQ</span>
+      <h2 id="faq-title">Straight answers</h2>
+    </div>
+    <details class="faq" open>
+      <summary>Is the AI agent available today?</summary>
+      <p>Not yet. The current test build lets an organization track customers, invoices and aging, with each organization's data kept separate. The agent that prioritizes cases, recommends next steps and follows up is in development.</p>
+    </details>
+    <details class="faq">
+      <summary>Will TabBeagle message my customers on its own?</summary>
+      <p>Not in the current build. Once follow-up is available, it is designed to run only inside playbooks you have approved, and you can pause it at any time. Messages that need your judgment wait for your approval.</p>
+    </details>
+    <details class="faq">
+      <summary>Does it connect to QuickBooks, Stripe or my bank?</summary>
+      <p>No integration is live yet. QuickBooks, Stripe and bank connections are planned. We will not describe any connection as working until it has been tested end to end.</p>
+    </details>
+    <details class="faq">
+      <summary>How is my data protected?</summary>
+      <p>Each organization sees only its own records, and the database enforces that separation. We have not yet completed an independent security audit or any compliance certification, and this site makes no SOC 2 or similar claim.</p>
+    </details>
+    <details class="faq">
+      <summary>What happens to the details I submit?</summary>
+      <p>They are used only to contact you about early access. A full privacy policy will be published before early access opens. You can ask us to remove your details at any time.</p>
+    </details>
+    <details class="faq">
+      <summary>How much will it cost?</summary>
+      <p>Pricing is still being finalized. Early access members will hear about it first.</p>
+    </details>
+  </div>
+</section>
+
+<!-- EARLY ACCESS -->
+<section id="early-access" aria-labelledby="ea-title">
+  <div class="wrap ea">
+    <div class="ea-copy">
+      <span class="kicker">Early access</span>
+      <h2 id="ea-title">Help us build the agent with the people who will use it.</h2>
+      <p class="lede" style="font-size:1.05rem">We are onboarding a small group of businesses that invoice customers. Tell us how you bill and where collections slow down. We will reach out when a spot opens.</p>
+      <ul>
+        <li>Early access members get first look at the agent and its controls.</li>
+        <li>You help decide which playbooks and approval rules matter most.</li>
+        <li>We are looking for feedback, not testimonials. Nothing is published without your consent.</li>
+      </ul>
+    </div>
+
+    <form class="ea-form" id="ea-form" novalidate>
+      <div class="field">
+        <label for="ea-name">Full name</label>
+        <input id="ea-name" name="name" type="text" autocomplete="name" maxlength="120" required aria-describedby="ea-name-err">
+        <span class="err" id="ea-name-err" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="ea-email">Work email</label>
+        <input id="ea-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" required aria-describedby="ea-email-hint ea-email-err">
+        <span class="hint" id="ea-email-hint">We use it only for early access updates.</span>
+        <span class="err" id="ea-email-err" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="ea-type">Business type</label>
+        <select id="ea-type" name="businessType" required aria-describedby="ea-type-err">
+          <option value="" selected disabled>Select one</option>
+          <option>Freelancer / consultant</option>
+          <option>Agency</option>
+          <option>Service business (contractor, cleaning, repair, etc.)</option>
+          <option>Professional services</option>
+          <option>Other</option>
+        </select>
+        <span class="err" id="ea-type-err" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="ea-volume">Invoices per month</label>
+        <select id="ea-volume" name="invoiceVolume" required aria-describedby="ea-volume-err">
+          <option value="" selected disabled>Select a range</option>
+          <option>1–20</option>
+          <option>21–50</option>
+          <option>51–150</option>
+          <option>151–300</option>
+          <option>More than 300</option>
+        </select>
+        <span class="err" id="ea-volume-err" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="ea-pain">What slows your collections down most? <span class="hint">(optional)</span></label>
+        <textarea id="ea-pain" name="pain" maxlength="300" aria-describedby="ea-pain-hint"></textarea>
+        <span class="hint" id="ea-pain-hint">300 characters maximum.</span>
+      </div>
+      <div class="field">
+        <label class="consent" for="ea-consent">
+          <input id="ea-consent" name="consent" type="checkbox" required aria-describedby="ea-consent-err">
+          <span>I agree that TabBeagle may email me about early access. I can ask to be removed at any time.</span>
+        </label>
+        <span class="err" id="ea-consent-err" role="alert"></span>
+      </div>
+
+      <!-- Honeypot: humans never see or fill this. -->
+      <div class="hp" aria-hidden="true"><label>Leave this field empty<input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+
+      <div class="form-status" id="ea-status" role="status" aria-live="polite"></div>
+      <button class="btn btn-primary" type="submit" id="ea-submit">Join early access</button>
+      <p class="fine">Preview only: submissions are not transmitted until early access is connected.</p>
+    </form>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="#top"><img src="assets/tabbeagle-app-icon.png" alt="" width="30" height="30">TabBeagle</a>
+        <p style="margin-top:12px;color:#A9B8C9">Get paid without chasing customers.</p>
+      </div>
+      <div>
+        <h3>Explore</h3>
+        <ul>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#control">Human control</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#early-access">Early access</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Legal</h3>
+        <ul>
+          <li>Privacy policy: published before early access opens</li>
+          <li>Terms of service: published before early access opens</li>
+        </ul>
+      </div>
+    </div>
+    <p class="legal">© 2026 TabBeagle. Early-access preview. Features marked “In development” or “Planned” are not available yet.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // Configuration. Leave endpoint empty until the integration plan in README.md is approved.
+  // Never point this at the production project or at the invoice TEST database.
+  var CONFIG = {
+    earlyAccessEndpoint: '',
+    minFillMs: 2500,
+    resubmitCooldownMs: 30000
+  };
+
+  var form = document.getElementById('ea-form');
+  var submitBtn = document.getElementById('ea-submit');
+  var statusEl = document.getElementById('ea-status');
+  var loadedAt = Date.now();
+  var inFlight = false;
+  var lastAttempt = 0;
+
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  var rules = {
+    name: function (v) { return v.trim().length >= 2 ? '' : 'Enter your full name.'; },
+    email: function (v) {
+      v = v.trim();
+      if (!v) return 'Enter your work email.';
+      if (v.length > 254 || !EMAIL_RE.test(v)) return 'Enter an email address like name@company.com.';
+      return '';
+    },
+    businessType: function (v) { return v ? '' : 'Choose the option that fits best.'; },
+    invoiceVolume: function (v) { return v ? '' : 'Choose a monthly invoice range.'; },
+    consent: function (checked) { return checked ? '' : 'Please agree so we can contact you about early access.'; }
+  };
+
+  function fieldFor(name) { return form.querySelector('[name="' + name + '"]'); }
+
+  function setError(name, message) {
+    var input = fieldFor(name);
+    var err = document.getElementById('ea-' + (name === 'businessType' ? 'type' : name === 'invoiceVolume' ? 'volume' : name) + '-err');
+    if (!err) return;
+    err.textContent = message;
+    err.classList.toggle('show', Boolean(message));
+    if (input) input.setAttribute('aria-invalid', message ? 'true' : 'false');
+  }
+
+  function validateField(name) {
+    var input = fieldFor(name);
+    var value = name === 'consent' ? input.checked : input.value;
+    var message = rules[name](value);
+    setError(name, message);
+    return !message;
+  }
+
+  function validateAll() {
+    var ok = true;
+    var first = null;
+    Object.keys(rules).forEach(function (name) {
+      if (!validateField(name)) {
+        ok = false;
+        if (!first) first = fieldFor(name);
+      }
+    });
+    if (first) first.focus();
+    return ok;
+  }
+
+  ['name', 'email', 'businessType', 'invoiceVolume', 'consent'].forEach(function (name) {
+    var input = fieldFor(name);
+    var evt = name === 'consent' || name === 'businessType' || name === 'invoiceVolume' ? 'change' : 'blur';
+    input.addEventListener(evt, function () { validateField(name); });
+  });
+
+  function showStatus(kind, message) {
+    statusEl.className = 'form-status show ' + kind;
+    statusEl.textContent = message;
+  }
+
+  function alreadySubmitted(email) {
+    try { return localStorage.getItem('tb_ea_email') === email; } catch (e) { return false; }
+  }
+
+  function rememberSubmitted(email) {
+    try { localStorage.setItem('tb_ea_email', email); } catch (e) { /* storage unavailable: ignore */ }
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (inFlight) return;
+
+    if (!validateAll()) {
+      showStatus('bad', 'Check the highlighted fields and try again.');
+      return;
+    }
+
+    // Spam mitigation: honeypot and minimum fill time. Failures get a neutral message, not a hint.
+    var honeypot = form.querySelector('input[name="website"]');
+    if ((honeypot && honeypot.value) || Date.now() - loadedAt < CONFIG.minFillMs) {
+      showStatus('bad', 'We could not send that. Please wait a moment and try again.');
+      return;
+    }
+
+    var payload = {
+      name: fieldFor('name').value.trim(),
+      email: fieldFor('email').value.trim().toLowerCase(),
+      business_type: fieldFor('businessType').value,
+      invoice_volume: fieldFor('invoiceVolume').value,
+      pain_point: fieldFor('pain').value.trim().slice(0, 300),
+      consent_marketing: true,
+      source: 'landing-preview'
+    };
+
+    if (alreadySubmitted(payload.email)) {
+      showStatus('ok', 'You are already on the early access list from this browser. Thank you.');
+      return;
+    }
+
+    // Preview build: no endpoint configured. Be explicit; never pretend the lead was stored.
+    if (!CONFIG.earlyAccessEndpoint) {
+      showStatus('preview', 'Preview build: your details were not sent. This form is not connected to the early access list yet, so nothing was stored.');
+      return;
+    }
+
+    var now = Date.now();
+    if (now - lastAttempt < CONFIG.resubmitCooldownMs) {
+      showStatus('bad', 'Please wait a moment before trying again.');
+      return;
+    }
+    lastAttempt = now;
+
+    inFlight = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+    showStatus('ok', 'Sending…');
+
+    fetch(CONFIG.earlyAccessEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      if (res.status === 409) { rememberSubmitted(payload.email); throw new Error('duplicate'); }
+      if (res.status === 429) { throw new Error('rate'); }
+      if (!res.ok) { throw new Error('server'); }
+      rememberSubmitted(payload.email);
+      form.reset();
+      showStatus('ok', 'You are on the list. We will email you when a spot opens.');
+    }).catch(function (err) {
+      if (err.message === 'duplicate') showStatus('ok', 'That email is already on the early access list.');
+      else if (err.message === 'rate') showStatus('bad', 'Too many attempts. Please wait a few minutes and try again.');
+      else showStatus('bad', 'We could not send your details. Check your connection and try again.');
+    }).finally(function () {
+      inFlight = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Join early access';
+    });
+  });
+})();
+</script>
+</body>
+</html>
