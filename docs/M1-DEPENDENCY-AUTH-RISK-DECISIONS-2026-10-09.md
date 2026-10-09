@@ -37,3 +37,7 @@ Four `authenticated_security_definer_function_executable` WARNs correspond to de
 - Issues #3 / #5 / #6 remain open. PR #1 remains DRAFT.
 - Strict TB-IT-001 signed-JWT HTTPS tenant isolation still not independently executed; manual UI tenant isolation and SQL simulated identity checks are different evidence.
 - After confirmed upstream compatible patches, open separate clean branch and run a fresh, signed build; do not make unsafe version jumps.
+
+## image-size 2.0.4 TEST-only trial — REJECTED
+
+Separate disposable CI branch `codex/m1-image-size-compatible-20261009`, [GitHub run #37922958582](https://github.com/playershype/TabBeagle/actions/runs/37922958582). Confirmed `image-size@2.0.4` exists on npm and pinned this version inside the runner only. `npm audit --omit=dev` showed 35 -> **34 advisories** (22 high -> **21 high**; 13 moderate unchanged; zero critical); the `image-size` advisory was no longer listed. **16/16 unit tests passed**, TypeScript passed, but `npm run bundle:android` FAILED with exact output `SyntaxError: assets/brand.png: The "list" argument must be an instance of SharedArrayBuffer, ArrayBuffer or ArrayBufferView.` Expo Metro failed while processing the brand icon. Native prebuild and signed APK were skipped; no source or lockfile in the existing branch was changed by the trial. **DO NOT PROMOTE image-size 2.0.4 as a global override:** dependency API compatibility is broken, despite favorable vulnerability counts. Keep 35 remaining baseline alerts until a targeted, Expo-compatible package update can pass JS bundle + native build.
