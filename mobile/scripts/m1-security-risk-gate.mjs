@@ -47,7 +47,7 @@ const guarded=[
   ['Expo SDK54 pinned',pkg.dependencies?.expo?.startsWith('~54.')],
   ['React Native 0.81 baseline',pkg.dependencies?.['react-native']==='0.81.5'],
   ['PostCSS 8.5.23 documented isolated override',pkg.overrides?.postcss==='8.5.23'],
-  ['Metro's expected image-size 1.x API preserved',Boolean(metro?.dependencies?.['image-size']?.startsWith('^1.') && image?.version?.startsWith('1.'))]
+  ["Metro's expected image-size 1.x API preserved",Boolean(metro?.dependencies?.['image-size']?.startsWith('^1.') && image?.version?.startsWith('1.'))]
 ].map(([name,passed])=>({name,passed:Boolean(passed)}));
 const report={
   scope:'ISOLATED_TEST_BRANCH; advisory baseline, not production certification',
