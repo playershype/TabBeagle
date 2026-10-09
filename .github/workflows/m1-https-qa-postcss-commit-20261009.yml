@@ -80,7 +80,7 @@ jobs:
           if [ "$GITHUB_REF" != 'refs/heads/codex/m1-https-qa-postcss-patch-20261009' ]; then exit 1; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add mobile/package.json mobile/package-lock.json
+          git add package.json package-lock.json
           if git diff --cached --quiet; then echo "PATCH_ALREADY_COMMITTED"; exit 0; fi
           git diff --cached --name-only
           git commit -m "fix(security): pin PostCSS 8.5.23 in HTTPS TEST QA only after native build"
