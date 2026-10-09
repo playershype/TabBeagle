@@ -1,0 +1,78 @@
+name: M1 Android remaining vulnerability inventory - isolated TEST only
+on:
+  push:
+    branches: [codex/m1-risk-triage-20261009]
+    paths:
+      - .github/workflows/m1-risk-triage-20261009.yml
+      - mobile/package-lock.json
+      - mobile/package.json
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dependency-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Enforce isolated branch and compatible PostCSS pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-risk-triage-20261009'
+          node - <<'NODE'
+          const p=require('./package.json');
+          if (p.overrides?.postcss !== '8.5.23') throw Error('Expected isolated compatible patch missing');
+          if (!p.dependencies?.expo?.startsWith('~54') || !p.dependencies['@react-navigation/native'].startsWith('^7')) throw Error('Unexpected Android SDK/navigation branch');
+          console.log('ISOLATED_TEST_BRANCH_AND_PIN_CONFIRMED');
+          NODE
+      - name: Restore exactly pinned dependency graph
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Create complete advisory report without forcing changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          npm audit --omit=dev --json > security-audit.json || status=$?
+          if test "$status" -gt 1; then echo 'npm audit execution error, not an advisory-only result'; exit "$status"; fi
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const audit=JSON.parse(fs.readFileSync('security-audit.json','utf8'));
+          if (!audit.metadata?.vulnerabilities || !audit.vulnerabilities) throw Error('Missing complete npm audit fields');
+          const counts=audit.metadata.vulnerabilities;
+          const items=Object.entries(audit.vulnerabilities).map(([name,v])=>({
+            name, severity:v.severity, direct:v.isDirect,
+            range:v.range, fixAvailable:v.fixAvailable,
+            via:(v.via||[]).map(x=>typeof x==='string'?x:{
+              name:x.name,title:x.title,url:x.url,severity:x.severity,range:x.range
+            })
+          })).sort((a,b)=>['critical','high','moderate','low','info'].indexOf(a.severity)-['critical','high','moderate','low','info'].indexOf(b.severity)||a.name.localeCompare(b.name));
+          fs.writeFileSync('security-advisories.json',JSON.stringify({baseline:'Expo54 Nav7 PostCSS isolated TEST',counts,items},null,2)+'\n');
+          console.log('AUDIT_TOTALS',JSON.stringify(counts));
+          for(const p of items) console.log('ADVISORY',p.severity,p.name,p.direct?'direct':'transitive','fixAvailable='+JSON.stringify(p.fixAvailable));
+          // A regression is not safe; this workflow NEVER changes a package.
+          if (counts.critical>0 || counts.high>22 || counts.total>35) throw Error('Security baseline regressed; do not promote this lab');
+          console.log('RISK_INVENTORY_RECORDED_NOT_PRODUCTION_APPROVED');
+          NODE
+      - name: Run unchanged Android source and TypeScript test suite
+        run: |
+          npm test
+          npm run typecheck
+      - name: Preserve non-sensitive audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-Android-35-Advisories-Isolated-Triage
+          path: |
+            mobile/security-advisories.json
+          if-no-files-found: error
+          retention-days: 30
