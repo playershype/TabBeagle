@@ -115,8 +115,8 @@ jobs:
           "$TOOLS/aapt" dump badging "$APK" | grep -E 'application-icon-[0-9]+:'
           "$TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml | grep 'tabbeaglerc01'
           unzip -l "$APK" | grep 'assets/index.android.bundle'
-          cp "$APK" ../../TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk
-          sha256sum ../../TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk
+          cp "$APK" ../TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk
+          sha256sum ../TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk
           echo 'RC1_NATIVE_APK_BRAND_PACKAGE_SIGNATURE_VERIFIED'
       - name: Publish independently installable TEST candidate and audit report
         uses: actions/upload-artifact@v4
