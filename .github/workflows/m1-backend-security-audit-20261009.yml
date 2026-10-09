@@ -1,0 +1,93 @@
+name: M1 TEST backend security and authentication-negative audit (no credentials)
+on:
+  push:
+    branches: [codex/m1-backend-security-audit-20261009]
+    paths:
+      - .github/workflows/m1-backend-security-audit-20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backend-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Enforce isolated branch and pinned TEST-only HTTPS host
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-backend-security-audit-20261009'
+          node - <<'NODE'
+          const p=require('./package.json');
+          if (!p.engines.node.startsWith('>=22') || !p.dependencies.next.startsWith('16.')) throw Error('Unrecognized TEST backend baseline');
+          NODE
+      - name: Clean npm dependencies without changing the lockfile
+        run: npm ci --ignore-scripts --no-fund --no-audit
+      - name: Audit runtime dependencies and preserve non-sensitive report
+        shell: bash
+        run: |
+          set -euo pipefail
+          result=0
+          npm audit --omit=dev --json > m1-backend-audit.json || result=$?
+          if test "$result" -gt 1; then exit "$result"; fi
+          node - <<'NODE'
+          const fs=require('fs');
+          const data=JSON.parse(fs.readFileSync('m1-backend-audit.json','utf8'));
+          const counts=data.metadata?.vulnerabilities;
+          if(!counts)throw Error('Missing audit report');
+          const findings=Object.entries(data.vulnerabilities??{}).map(([name,entry])=>({name,severity:entry.severity,direct:entry.isDirect,fixAvailable:entry.fixAvailable}));
+          fs.writeFileSync('m1-backend-risk-report.json',JSON.stringify({component:'TEST API Next.js backend',counts,findings,classification:'AUDIT_ONLY_NOT_PRODUCTION_APPROVED'},null,2)+'\n');
+          console.log('BACKEND_NPM_AUDIT',JSON.stringify(counts));
+          for(const f of findings)console.log('BACKEND_FINDING',f.severity,f.name,JSON.stringify(f.fixAvailable));
+          NODE
+      - name: Verify offline business rules and persisted RLS tests
+        run: npm test
+      - name: Build Next.js TEST backend with pinned dependencies
+        run: npm run build
+      - name: Validate backend TypeScript
+        run: npm run typecheck
+      - name: Test anonymous and invalid-token requests against Railway TEST only
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module - <<'NODE'
+          const base='https://tabbeagle-api-test-test.up.railway.app';
+          const checks=[
+            {route:'/api/health',status:200},
+            {route:'/api/organizations',status:401},
+            {route:'/api/customers?organizationId=479d925c-7ed4-4479-9ef2-850c0607a048',status:401},
+            {route:'/api/invoices?organizationId=7da70daf-c1df-49b5-be80-f56fe3909043',status:401},
+            {route:'/api/invoices/f37a8d95-f361-4238-90d9-ae03de6bec11',status:401},
+            {route:'/api/invoices',method:'POST',status:401,body:'{}'},
+            {route:'/api/invoices?organizationId=479d925c-7ed4-4479-9ef2-850c0607a048',status:401,invalidToken:true},
+          ];
+          let fail=0;
+          for(const p of checks){
+            const target=new URL(p.route,base);
+            if(target.origin!==base)throw Error('Refused outbound non-TEST URL');
+            const headers=p.invalidToken?{Authorization:'Bearer invalid-m1-test-token'}:{};
+            const res=await fetch(target,{method:p.method??'GET',headers: {...headers,...(p.body?{'Content-Type':'application/json'}:{})},body:p.body,redirect:'error',signal:AbortSignal.timeout(15000)});
+            console.log((res.status===p.status?'PASS':'FAIL')+' BACKEND_TEST_ROUTE '+(p.method??'GET')+' '+target.pathname+' status='+res.status+' expected='+p.status);
+            if(res.status!==p.status)fail++;
+          }
+          if(fail)throw Error('TEST API unauthorized-request negative checks failed: '+fail);
+          console.log('NOTE: NO user JWTs and NO cross-tenant signed-user HTTPS probes were involved');
+          NODE
+      - name: Upload audit counts and findings, never credentials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-Backend-TEST-Security-Audit-NoCredentials
+          path: backend/m1-backend-risk-report.json
+          retention-days: 30
+          if-no-files-found: warn
