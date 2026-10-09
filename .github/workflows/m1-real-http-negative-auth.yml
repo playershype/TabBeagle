@@ -1,0 +1,56 @@
+name: M1 TEST real HTTPS negative authorization gate
+on:
+  push:
+    branches:
+      - codex/android-first-persistent-flow
+    paths:
+      - .github/workflows/m1-real-http-negative-auth.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  anonymous-negative-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify real TEST HTTPS rejects unauthenticated reads and writes
+        env:
+          BASE: https://tabbeagle-api-test-test.up.railway.app
+          AUTH: https://gaileljkciseopfgwsbc.supabase.co
+          TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+          ORGANIZATION: 479d925c-7ed4-4479-9ef2-850c0607a048
+          TEST_INVOICE: 365b1aa2-1da7-4bf2-9550-c3175406dcac
+        run: |
+          node <<'NODE'
+          const base=process.env.BASE;
+          let failed=false;
+          const probe=async (label,method,path,expected,authorization)=>{
+            const url=new URL(path,base);
+            if(url.origin!==base)throw Error('Unexpected host');
+            const r=await fetch(url,{method,redirect:'error',signal:AbortSignal.timeout(15000),
+              headers:authorization?{Authorization:authorization}:{},
+            });
+            const contentType=r.headers.get('content-type')||'';
+            const body=contentType.includes('application/json') ? await r.json().catch(()=>null) : null;
+            const ok=r.status===expected && r.headers.get('cache-control')==='no-store';
+            console.log((ok?'PASS ':'FAIL ')+label+' HTTP '+r.status+' expected '+expected);
+            if(!ok)failed=true;
+          };
+          (async()=>{
+            await probe('No bearer: organizations','GET','/api/organizations',401);
+            await probe('No bearer: invoice list','GET','/api/invoices?organizationId='+process.env.ORGANIZATION,401);
+            await probe('No bearer: invoice ID','GET','/api/invoices/'+process.env.TEST_INVOICE,401);
+            await probe('Bogus bearer: organizations','GET','/api/organizations',401,'Bearer invalid.jwt.value');
+            await probe('No bearer: invoice POST','POST','/api/invoices',401);
+            const health=await fetch(base+'/api/health',{signal:AbortSignal.timeout(15000),redirect:'error'});
+            console.log((health.status===200?'PASS ':'FAIL ')+'TEST Railway health '+health.status);
+            if(health.status!==200) failed=true;
+            const settings=await fetch(process.env.AUTH+'/auth/v1/settings',{headers:{apikey:process.env.TEST_SUPABASE_PUBLISHABLE_KEY},signal:AbortSignal.timeout(15000),redirect:'error'});
+            console.log('TEST_AUTH_SETTINGS_HTTP_STATUS',settings.status);
+            const auth=settings.status===200?await settings.json():null;
+            const signupDisabled=auth?.disable_signup===true;
+            console.log((signupDisabled?'PASS ':'FAIL ')+'TEST public signup globally disabled');
+            if(!signupDisabled)failed=true;
+            if(failed)process.exitCode=1;
+            else console.log('M1_NETWORK_NEGATIVE_AUTHORIZATION_PASS (does NOT certify two real user JWTs)');
+          })().catch(e=>{console.error('M1_NETWORK_TEST_FAILED',e.name||'Error');process.exitCode=1;});
+          NODE
