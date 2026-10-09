@@ -9,6 +9,7 @@ import type { Session } from '@supabase/supabase-js';
 import { getSupabase } from './src/lib/supabase';
 import { configErrors } from './src/lib/config';
 import { callbackCode } from './src/lib/authCallback';
+import * as ExpoLinking from 'expo-linking';
 import { fetchOrganizations, createOrganization } from './src/lib/api';
 import { OrganizationContext } from './src/lib/org';
 import type { Organization, RootStackParams } from './src/types';
@@ -91,7 +92,7 @@ function ConfiguredApp() {
     async function consume(url: string | null) {
       if (!url) return;
       let code: string | null;
-      try { code = callbackCode(url); } catch (e) { if (active) setError(messageOf(e)); return; }
+      try { code = callbackCode(url, ExpoLinking.createURL('auth/callback')); } catch (e) { if (active) setError(messageOf(e)); return; }
       if (!code || consumed.has(code)) return;
       consumed.add(code);
       try {
