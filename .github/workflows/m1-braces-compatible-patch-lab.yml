@@ -1,0 +1,117 @@
+name: M1 braces vulnerability compatible patch trial - TEST isolated
+on:
+  push:
+    branches: [codex/m1-braces-compatible-patch-lab]
+    paths:
+      - .github/workflows/m1-braces-compatible-patch-lab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safe-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Confirm isolated testing scope and supported Expo 54 base
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-braces-compatible-patch-lab'
+          node - <<'NODE'
+          const p=require('./package.json');
+          if (!p.dependencies.expo.startsWith('~54') || p.overrides?.postcss !== '8.5.23') {
+            throw Error('Unexpected baseline: trial must start on tested Expo 54 / PostCSS lab');
+          }
+          NODE
+      - name: Verify npm registry offers candidate patched braces version
+        run: |
+          set -euo pipefail
+          npm view braces@3.0.4 version
+      - name: Apply candidate override only in disposable CI working directory
+        run: |
+          set -euo pipefail
+          npm pkg set overrides.braces=3.0.4
+          npm install --package-lock-only --ignore-scripts --legacy-peer-deps --no-fund --no-audit
+          npm ci --legacy-peer-deps --no-fund --no-audit
+          node - <<'NODE'
+          const p=require('./package.json');
+          const lock=require('./package-lock.json');
+          if (p.overrides?.braces!=='3.0.4' || p.overrides?.postcss!=='8.5.23') throw Error('Scoped safe pin not present');
+          const candidates=Object.entries(lock.packages).filter(([name])=>name.endsWith('/braces')||name==='node_modules/braces').map(([name,meta])=>({name,version:meta.version}));
+          if (!candidates.length || candidates.some(c=>c.version!=='3.0.4')) throw Error('Vulnerable braces versions remain: '+JSON.stringify(candidates));
+          console.log('PINNED_BRACES_GRAPH',JSON.stringify(candidates));
+          NODE
+      - name: Inventory patched vulnerability counts and validate no regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          npm audit --omit=dev --json > m1-braces-patch-audit.json || status=$?
+          if test "$status" -gt 1; then exit "$status"; fi
+          node - <<'NODE'
+          const fs=require('fs');
+          const audit=JSON.parse(fs.readFileSync('m1-braces-patch-audit.json','utf8'));
+          const v=audit.metadata?.vulnerabilities;
+          if (!v) throw Error('Audit metadata missing');
+          fs.writeFileSync('m1-braces-risk-delta.json',JSON.stringify({
+            baseline:{critical:0,high:22,moderate:13,total:35},
+            patched:v,
+            branches:'TEST isolated disposable CI only',
+            result:'CANDIDATE_NOT_PROMOTED'
+          },null,2)+'\n');
+          console.log('AUDIT_CANDIDATE',JSON.stringify(v));
+          if(v.critical>0 || v.high>22 || v.total>35) throw Error('Security regression');
+          if(v.high===22 && v.total===35)console.log('NO_REDUCTION_DETECTED_NEVER_CLAIM_FIXED');
+          NODE
+      - name: Run locked-source tests, TypeScript and Android JavaScript export
+        run: |
+          set -euo pipefail
+          npm run check:env
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Verify Android native prebuild remains compatible
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          test -f android/gradlew
+          echo 'EXPO54_ANDROID_PREBUILD_PASS'
+      - name: Build signed Android release on isolated patch candidate
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          echo 'NATIVE_RELEASE_SIGNATURE_PASS'
+      - name: Upload exact candidate dependency graph and audit report, no APK promotion
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-Braces-Scoped-Patch-Candidate-Not-Promoted
+          path: |
+            mobile/package.json
+            mobile/package-lock.json
+            mobile/m1-braces-risk-delta.json
+          if-no-files-found: warn
+          retention-days: 30
