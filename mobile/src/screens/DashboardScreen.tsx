@@ -25,6 +25,14 @@ export default function DashboardScreen({ navigation }: NativeStackScreenProps<R
   }
   const totals = outstandingByCurrency(invoices ?? []);
   const today = todayIn(org.timezone);
+  // Overdue = open invoices whose due date is before today, summed per currency.
+  const overdueTotals: Record<string, number> = {};
+  let overdueCount = 0;
+  for (const invoice of invoices ?? []) {
+    if (['PAID', 'VOID'].includes(invoice.payment_status) || daysOverdue(invoice.due_date, today) <= 0) continue;
+    overdueCount += 1;
+    overdueTotals[invoice.currency] = (overdueTotals[invoice.currency] ?? 0) + invoice.outstanding_amount_minor;
+  }
   return <View style={ui.page}><FlatList data={invoices ?? []} keyExtractor={i => i.id}
     contentContainerStyle={{ padding: 20, paddingBottom: 36 }} refreshControl={<RefreshControl refreshing={busy} onRefresh={load} />}
     ListHeaderComponent={<>
@@ -35,6 +43,12 @@ export default function DashboardScreen({ navigation }: NativeStackScreenProps<R
       {invoices !== null && <View style={ui.card}><Text style={ui.label}>Outstanding balance{error ? ' · Last loaded' : ''}</Text>
         {Object.keys(totals).length ? Object.entries(totals).map(([currency, amount]) => <Text key={currency} style={ui.title}>{fmtMoney(amount, currency)} {currency}</Text>) : <Text style={ui.title}>{fmtMoney(0)}</Text>}
         <Text style={ui.subtitle}>{invoices.length} invoice{invoices.length === 1 ? '' : 's'}</Text>
+      </View>}
+      {invoices !== null && <View style={ui.card}><Text style={ui.label}>Overdue</Text>
+        {overdueCount === 0 ? <Text style={ui.subtitle}>Nothing overdue right now.</Text> : <>
+          {Object.entries(overdueTotals).map(([currency, amount]) => <Text key={currency} style={ui.title}>{fmtMoney(amount, currency)} {currency}</Text>)}
+          <Text style={ui.subtitle}>{overdueCount} invoice{overdueCount === 1 ? '' : 's'} past due</Text>
+        </>}
       </View>}
       <Button title="+ New invoice" onPress={() => navigation.navigate('AddInvoice')} />
       <Button title="+ New customer" secondary onPress={() => navigation.navigate('AddCustomer')} />

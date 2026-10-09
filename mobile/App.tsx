@@ -22,6 +22,7 @@ import InvoiceDetailScreen from './src/screens/InvoiceDetailScreen';
 import AccountPasswordScreen from './src/screens/AccountPasswordScreen';
 import { testPasswordAuthEnabled } from './src/lib/config';
 import Splash from './src/components/Splash';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 const Stack = createNativeStackNavigator<RootStackParams>();
 
 function OrganizationGate() {
@@ -78,6 +79,7 @@ function OrganizationGate() {
 function ConfiguredApp() {
   const [session, setSession] = useState<Session | null>();
   const [error, setError] = useState<string | null>(null);
+  const [started, setStarted] = useState(false);
   const loadSession = useCallback(async () => {
     setError(null);
     try {
@@ -114,7 +116,7 @@ function ConfiguredApp() {
   }, [loadSession]);
   return <View style={ui.page}>
     {error && <View style={{ paddingHorizontal: 24 }}><ErrorText message={error} />{session === undefined && <Button title="Retry" onPress={loadSession} />}</View>}
-    {session === undefined ? <ActivityIndicator style={{ marginTop: 40 }} /> : session ? <OrganizationGate key={session.user.id} /> : <LoginScreen />}
+    {session === undefined ? <ActivityIndicator style={{ marginTop: 40 }} /> : session ? <OrganizationGate key={session.user.id} /> : started ? <LoginScreen /> : <WelcomeScreen onStart={() => setStarted(true)} />}
   </View>;
 }
 export default function App() {
