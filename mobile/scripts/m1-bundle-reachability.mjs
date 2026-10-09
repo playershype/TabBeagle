@@ -46,7 +46,7 @@ if(!packageModules.has('react-native')||packageModules.size<15){
  throw new Error('Android source map lacks expected React Native modules; do not make absence claims.');
 }
 // The expected-linker sanity check guards against overinterpreting source-map absence.
-const selectedModuleHints=allSourceSamples.filter(src=>/linking|@expo\\/cli|supabase-js|react-navigation/i.test(src)).slice(0,50).map(src=>{
+const selectedModuleHints=allSourceSamples.filter(src=>['linking','@expo/cli','supabase-js','react-navigation'].some(term=>src.toLowerCase().includes(term))).slice(0,50).map(src=>{
  const marker='node_modules/';const index=src.lastIndexOf(marker);
  return index>=0?src.slice(index).slice(0,160):'<app-source> '+path.basename(src);
 });
