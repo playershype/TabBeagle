@@ -1,0 +1,119 @@
+name: M1 image-size 2.0.4 security patch compatibility LAB (no promotion)
+on:
+  push:
+    branches: [codex/m1-image-size-compatible-20261009]
+    paths: [.github/workflows/m1-image-size-compatible-20261009.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compatible-patch-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify approved isolated baseline and published candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-image-size-compatible-20261009'
+          node - <<'NODE'
+          const p=require('./package.json');
+          if(!p.dependencies?.expo?.startsWith('~54') || !p.dependencies['@react-navigation/native']?.startsWith('^7') || p.overrides?.postcss!=='8.5.23') {
+             throw Error('Expected Expo54+Nav7+PostCSS risk laboratory baseline missing');
+          }
+          NODE
+          npm view image-size@2.0.4 version
+      - name: Apply image-size 2.0.4 ONLY inside disposable Actions runner
+        run: |
+          set -euo pipefail
+          npm pkg set overrides.image-size=2.0.4
+          npm install --package-lock-only --ignore-scripts --legacy-peer-deps --no-fund --no-audit
+          npm ci --legacy-peer-deps --no-fund --no-audit
+          node - <<'NODE'
+          const lock=require('./package-lock.json');
+          const found=Object.entries(lock.packages).filter(([name])=>name==='node_modules/image-size'||name.endsWith('/node_modules/image-size')).map(([path,value])=>({path,version:value.version}));
+          if(!found.length||found.some(x=>x.version!=='2.0.4'))throw Error('The dependency graph still contains unpatched image-size versions');
+          console.log('IMAGE_SIZE_INSTALLED',JSON.stringify(found));
+          NODE
+      - name: Measure advisory delta without hiding any other risk
+        run: |
+          set -euo pipefail
+          status=0
+          npm audit --omit=dev --json > m1-image-size-full-audit.json || status=$?
+          if test "$status" -gt 1; then exit "$status"; fi
+          node - <<'NODE'
+          const fs=require('fs');
+          const report=JSON.parse(fs.readFileSync('m1-image-size-full-audit.json','utf8'));
+          const counts=report.metadata?.vulnerabilities||{};
+          const item=report.vulnerabilities?.['image-size'];
+          const result={baseline:{critical:0,high:22,moderate:13,total:35},
+            candidate:counts,imageSizeVulnerable:Boolean(item),
+            imageSizeDirect:Boolean(item?.isDirect),
+            status:'UNPROMOTED_ISOLATED_COMPATIBILITY_TRIAL',
+            note:'A lower count cannot alone certify the patch; Android release and regression tests required'};
+          fs.writeFileSync('m1-image-size-risk-delta.json',JSON.stringify(result,null,2)+'\n');
+          console.log('ADVISORY_DELTA',JSON.stringify(result));
+          if(counts.critical>0||counts.high>22||counts.total>35)throw Error('Audit regressed');
+          if(item)throw Error('image-size vulnerability still reported; stop and investigate');
+          NODE
+      - name: Verify app tests, TypeScript, Android JavaScript export
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Native Android prebuild with uniquely isolated QA-only app id
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const obj=JSON.parse(fs.readFileSync('app.json','utf8'));
+          obj.expo.name='TabBeagle ImageSize Compatibility Lab';
+          obj.expo.slug='tabbeagle-m1-imagesize-compat';
+          obj.expo.scheme='tabbeagleimagesizelab';
+          obj.expo.android.package='com.tabbeagle.user.imagesizelab';
+          fs.writeFileSync('app.json',JSON.stringify(obj,null,2));
+          NODE
+          CI=1 npx expo prebuild --platform android --no-install
+          test -s android/gradlew
+          echo EXPO54_IMAGE_SIZE_PREBUILD_PASS
+      - name: Build and verify signed TEST-only Android release (NO APK upload)
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.imagesizelab'"
+          echo NATIVE_RELEASE_SIGNATURE_PASS_NO_PROMOTION
+      - name: Upload exact candidate locks and advisory evidence (NOT an app)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-ImageSize-2.0.4-LAB-NotPromoted
+          path: |
+            mobile/package.json
+            mobile/package-lock.json
+            mobile/m1-image-size-risk-delta.json
+          retention-days: 30
+          if-no-files-found: warn
