@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Image, Text } from 'react-native';
 import { getSupabase } from '../lib/supabase';
-import { AUTH_REDIRECT } from '../lib/authCallback';
+import * as ExpoLinking from 'expo-linking';
 import { testPasswordAuthEnabled } from '../lib/config';
 import { Button, ErrorText, Field, Form, messageOf, ui } from '../components/UI';
 
@@ -31,7 +31,7 @@ export default function LoginScreen() {
         // Magic links are only for existing users: never create a new signup through this UI.
         const { error } = await getSupabase().auth.signInWithOtp({
           email: normalizedEmail,
-          options: { emailRedirectTo: AUTH_REDIRECT, shouldCreateUser: false },
+          options: { emailRedirectTo: ExpoLinking.createURL('auth/callback'), shouldCreateUser: false },
         });
         if (error) throw error;
         setSent(true);
@@ -55,7 +55,7 @@ export default function LoginScreen() {
     {testPasswordAuthEnabled && <Text style={ui.subtitle}>Private TEST access for existing accounts. No public registration.</Text>}
     <Field label="Work email" value={email} onChangeText={value => { setEmail(value); setSent(false); setError(null); setRateLimited(false); }} autoCapitalize="none" keyboardType="email-address" autoComplete="email" editable={!busy} />
     {method === 'password' && testPasswordAuthEnabled && <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoCorrect={false} autoCapitalize="none" autoComplete="current-password" editable={!busy} />}
-    {method === 'link' && sent && <Text style={[ui.subtitle, { marginTop: 20 }]}>Check your inbox. Open the newest sign-in link on this device.</Text>}
+    {method === 'link' && sent && <Text style={[ui.subtitle, { marginTop: 20 }]}>Check your inbox. Open the newest sign-in link on this device. If Gmail shows an empty browser, use its menu to open the link in Chrome.</Text>}
     <ErrorText message={error} />
     <Button title={method === 'password' ? 'Sign in with password' : sent ? 'Send a new link' : 'Send sign-in link'} onPress={signIn} busy={busy} disabled={method === 'link' && rateLimited} />
     {testPasswordAuthEnabled && <>
