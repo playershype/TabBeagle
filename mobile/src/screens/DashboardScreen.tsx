@@ -29,7 +29,7 @@ export default function DashboardScreen({ navigation }: NativeStackScreenProps<R
     contentContainerStyle={{ padding: 20, paddingBottom: 36 }} refreshControl={<RefreshControl refreshing={busy} onRefresh={load} />}
     ListHeaderComponent={<>
       <Text style={ui.title}>{org.name}</Text><Text style={ui.subtitle}>Your invoices, in one place.</Text>
-      {testPasswordAuthEnabled && <Text style={[ui.subtitle, { fontSize: 12 }]}>TEST Build 5 · Password access + safe retries</Text>}
+      {testPasswordAuthEnabled && <Text style={[ui.subtitle, { fontSize: 12 }]}>TabBeagle v0.1 RC1 · TEST</Text>}
       <ErrorText message={error} />
       {error && <Button title="Retry loading" secondary onPress={load} busy={busy} />}
       {invoices !== null && <View style={ui.card}><Text style={ui.label}>Outstanding balance{error ? ' · Last loaded' : ''}</Text>
@@ -52,7 +52,6 @@ export default function DashboardScreen({ navigation }: NativeStackScreenProps<R
     }}
     ListFooterComponent={<>
       {testPasswordAuthEnabled && <Button title="Account security · Create TEST password" secondary onPress={() => navigation.navigate('AccountPassword')} />}
-      {testPasswordAuthEnabled && <Button title="M1 · Test company isolation (HTTPS)" secondary onPress={() => navigation.navigate('TenantProbe')} />}
       <Button title="Sign out" secondary onPress={signOut} />
     </>}
   /></View>;
