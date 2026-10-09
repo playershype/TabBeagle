@@ -1,0 +1,75 @@
+name: M1 actual HTTPS QA Android runtime bundle security evidence
+on:
+  push:
+    branches: [codex/m1-https-apk-bundle-audit-20261009]
+    paths:
+      - mobile/scripts/m1-bundle-reachability.mjs
+      - .github/workflows/m1-https-apk-bundle-audit-20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installed-qa-app-metro-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      npm_config_legacy_peer_deps: 'true'
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Confirm exact HTTPS QA native lab source lineage
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-https-apk-bundle-audit-20261009'
+          grep -F 'TenantProbeScreen' App.tsx
+          grep -F 'expo-linking' App.tsx
+          grep -F 'runTenantProbe' src/screens/TenantProbeScreen.tsx
+          node --check scripts/m1-bundle-reachability.mjs
+      - name: Install exact locked dependencies, no forced upgrade
+        run: npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Count real npm production advisory packages for HTTPS APK source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rc=0
+          npm audit --omit=dev --json > m1-security-audit.json || rc=$?
+          if test "$rc" -gt 1; then exit "$rc"; fi
+          node - <<'NODE'
+          const x=require('./m1-security-audit.json');
+          if(!x.metadata?.vulnerabilities)throw Error('Missing audit baseline');
+          console.log('HTTPS_QA_DEPENDENCY_BASELINE',JSON.stringify(x.metadata.vulnerabilities));
+          NODE
+      - name: Run exactly shipped HTTPS QA app tests and typecheck
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+      - name: Export real HTTPS QA Android JS and source map
+        run: |
+          set -euo pipefail
+          CI=1 npx expo export --platform android --output-dir dist --dump-sourcemap
+      - name: Inspect bundled audited module inclusion without false security claims
+        run: |
+          set -euo pipefail
+          node scripts/m1-bundle-reachability.mjs
+      - name: Upload derived evidence report; no secrets or original sourcemaps
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-HTTPSQA-ExactAndroidRuntime-Modules-TEST
+          path: mobile/m1-android-bundle-reachability.json
+          if-no-files-found: warn
+          retention-days: 30
