@@ -32,9 +32,12 @@ for(const p of androidMaps){
  for(const untrusted of map.sources){
   const src=String(untrusted).replaceAll('\\','/');
   allSourceSamples.push(src);
-  const match=src.match(/(?:^|\\/)node_modules\\/((?:@[^/]+\\/)?[^/]+)/);
-  if(!match)continue;
-  const name=match[1];
+  const marker='node_modules/';
+  const offset=src.lastIndexOf(marker);
+  if(offset<0)continue;
+  const relative=src.slice(offset+marker.length).split('/');
+  const name=relative[0]?.startsWith('@')?relative.slice(0,2).join('/'):relative[0];
+  if(!name)continue;
   items.add(name);
   packageModules.set(name,(packageModules.get(name)||0)+1);
  }
@@ -73,7 +76,7 @@ const result={
   'Npm audit findings can be umbrella packages: inspect each advisory and loaded code before risk waivers.'
  ]
 };
-fs.writeFileSync(path.join(project,'m1-android-bundle-reachability.json'),JSON.stringify(result,null,2)+'\\n');
+fs.writeFileSync(path.join(project,'m1-android-bundle-reachability.json'),JSON.stringify(result,null,2)+'\n');
 console.log('M1_JS_BUNDLE_REACHABILITY',JSON.stringify({
  maps:result.androidSourceMaps.length,sourceEntries:result.totalSourceEntries,distinctPackages:items.size,
  auditedNames:analyzed.length,present:result.presentCount,absent:result.absentCount,
