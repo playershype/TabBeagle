@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "TabBeagle",
-    "slug": "tabbeagle-user",
-    "scheme": "tabbeagle",
-    "version": "1.1.0",
+    "name": "TabBeagle RC TEST",
+    "slug": "tabbeagle-v01-rc1-test",
+    "scheme": "tabbeaglerc01",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/brand.png",
     "userInterfaceStyle": "light",
@@ -14,8 +14,8 @@
       "backgroundColor": "#F8FAFC"
     },
     "android": {
-      "package": "com.tabbeagle.user.preview",
-      "versionCode": 5,
+      "package": "com.tabbeagle.user.v01rc1test",
+      "versionCode": 1,
       "allowBackup": false
     },
     "ios": {
