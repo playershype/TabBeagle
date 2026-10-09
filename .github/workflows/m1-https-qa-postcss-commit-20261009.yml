@@ -1,0 +1,88 @@
+name: M1 Commit PostCSS fix to isolated HTTPS QA patch branch after native success
+on:
+  push:
+    branches: [codex/m1-https-qa-postcss-patch-20261009]
+    paths: [.github/workflows/m1-https-qa-postcss-commit-20261009.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  commit-only-after-separately-signed-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    env:
+      GH_TOKEN: ${{ github.token }}
+      npm_config_legacy_peer_deps: 'true'
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: codex/m1-https-qa-postcss-patch-20261009
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Verify isolated branch and wait for signed native patch CI to pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-https-qa-postcss-patch-20261009'
+          for n in $(seq 1 55); do
+            status="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/37928133093" --jq '.status')"
+            conclusion="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/37928133093" --jq '.conclusion // "pending"')"
+            if [ "$status" = completed ]; then
+              if [ "$conclusion" != success ]; then echo "Native security patch validation did not pass: $conclusion"; exit 1; fi
+              echo 'GATED_NATIVE_SIGNED_RELEASE_VERIFIED_SUCCESS'
+              break
+            fi
+            if [ "$n" = 55 ]; then echo 'Native validation timeout; refuse to commit'; exit 1; fi
+            sleep 20
+          done
+          grep -F 'TenantProbeScreen' App.tsx
+          grep -F 'expo-linking' App.tsx
+      - name: Apply and lock only previously signed-compatible PostCSS 8.5.23
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pkg set overrides.postcss=8.5.23
+          npm install --package-lock-only --ignore-scripts --legacy-peer-deps --no-fund --no-audit
+          npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Verify no critical/high regression and exact dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          npm audit --omit=dev --json > m1-postcss-commit-audit.json || status=$?
+          if test "$status" -gt 1; then exit "$status"; fi
+          node - <<'NODE'
+          const a=require('./m1-postcss-commit-audit.json');
+          const p=require('./package.json');
+          const lock=require('./package-lock.json');
+          const versions=Object.entries(lock.packages).filter(([k])=>k==='node_modules/postcss'||k.endsWith('/node_modules/postcss')).map(([k,v])=>v.version);
+          if(p.overrides?.postcss!=='8.5.23'||versions.length<1||versions.some(v=>v!=='8.5.23'))throw Error('PostCSS not safely pinned');
+          if(a.metadata.vulnerabilities.critical!==0||a.metadata.vulnerabilities.high>22||a.metadata.vulnerabilities.total>35||a.vulnerabilities?.postcss)throw Error('Risk threshold not met');
+          console.log('M1_POSTCSS_COMMIT_VERIFIED',JSON.stringify(a.metadata.vulnerabilities));
+          NODE
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Commit just patch metadata to isolated branch; never main
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != 'refs/heads/codex/m1-https-qa-postcss-patch-20261009' ]; then exit 1; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/package.json mobile/package-lock.json
+          if git diff --cached --quiet; then echo "PATCH_ALREADY_COMMITTED"; exit 0; fi
+          git diff --cached --name-only
+          git commit -m "fix(security): pin PostCSS 8.5.23 in HTTPS TEST QA only after native build"
+          git push origin HEAD:refs/heads/codex/m1-https-qa-postcss-patch-20261009
+          echo "ISOLATED_POSTCSS_PATCH_COMMITTED_NO_MAIN_CHANGED"
