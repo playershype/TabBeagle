@@ -1,7 +1,7 @@
 // join-early-access: the only write path for early-access leads.
 // Public endpoint (verify_jwt=false) by design: the landing page is static and anonymous.
 // Writes go through the service role inside this function; the table has RLS and no policies.
-// Deployed to project agobuvygxvjgkdecijyp (tabbeagle-leads) as version 1.
+// Deployed to project gaileljkciseopfgwsbc (tabbeagle-test) on 2026-10-09 as version 1.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 

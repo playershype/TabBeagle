@@ -53,7 +53,7 @@ test('local assets referenced by the page exist', () => {
 test('no external network dependencies, trackers or insecure links', () => {
   assert.doesNotMatch(html, /<script[^>]+src=/i, 'no external scripts');
   assert.doesNotMatch(html, /<link[^>]+rel="stylesheet"/i, 'no external stylesheets');
-  const withoutEndpoint = html.replace('https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access', '');
+  const withoutEndpoint = html.replace('https://gaileljkciseopfgwsbc.supabase.co/functions/v1/join-early-access', '');
   assert.doesNotMatch(withoutEndpoint, /https?:\/\/(?!tabbeagle\.com)/i, 'no absolute external URLs besides the approved endpoint');
   assert.doesNotMatch(html, /google-analytics|gtag\(|googletagmanager|facebook|hotjar|segment\.|fbq\(/i, 'no trackers');
   assert.doesNotMatch(html, /http:\/\//i, 'no http links');
@@ -61,14 +61,14 @@ test('no external network dependencies, trackers or insecure links', () => {
 
 test('no production or invoice-database identifiers and no secrets in the page', () => {
   assert.doesNotMatch(html, /kbidusxzzuwmxsukqvpm/, 'production Supabase project must not be referenced');
-  assert.doesNotMatch(html, /gaileljkciseopfgwsbc/, 'invoice TEST project must not be referenced');
+  // The leads endpoint now lives in the shared TEST project (approved 2026-10-09; leads table is isolated by RLS).
   assert.doesNotMatch(html, /sb_publishable_|sb_secret_|service_role|eyJhbGci/i, 'no Supabase keys in the page');
 });
 
 test('early access endpoint points only at the approved leads function', () => {
   const urls = [...html.matchAll(/https:\/\/[a-z0-9.-]+\.supabase\.co[^'"\s]*/g)].map((m) => m[0]);
-  assert.deepEqual(urls, ['https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access']);
-  assert.match(html, /earlyAccessEndpoint:\s*'https:\/\/agobuvygxvjgkdecijyp\.supabase\.co\/functions\/v1\/join-early-access'/);
+  assert.deepEqual(urls, ['https://gaileljkciseopfgwsbc.supabase.co/functions/v1/join-early-access']);
+  assert.match(html, /earlyAccessEndpoint:\s*'https:\/\/gaileljkciseopfgwsbc\.supabase\.co\/functions\/v1\/join-early-access'/);
 });
 
 test('form sends the honeypot value so the server can reject bots', () => {

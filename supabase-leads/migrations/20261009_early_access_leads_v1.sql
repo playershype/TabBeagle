@@ -1,5 +1,5 @@
--- Project: tabbeagle-leads (agobuvygxvjgkdecijyp). NOT the production or invoice TEST project.
--- Applied 2026-10-09 via Supabase MCP as migration "early_access_leads_v1".
+-- Project: tabbeagle-test (gaileljkciseopfgwsbc), shared with invoice TEST by decision 2026-10-09. NOT the production project.
+-- Applied 2026-10-09 to tabbeagle-test via Supabase MCP as migration "early_access_leads_v1".
 create table public.early_access_leads (
   id uuid primary key default gen_random_uuid(),
   email_normalized text not null unique check (char_length(email_normalized) between 3 and 254),

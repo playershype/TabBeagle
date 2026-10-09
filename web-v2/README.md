@@ -26,8 +26,8 @@ The browser suite needs a Chromium that Playwright can launch. It does not run `
 
 ## Early-access form: connected to the leads project
 
-- Destination: Supabase project `tabbeagle-leads` (`agobuvygxvjgkdecijyp`, us-east-1, free plan). Not production (`kbidusxzzuwmxsukqvpm`), not invoice TEST (`gaileljkciseopfgwsbc`).
-- Endpoint: `https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access` (Edge Function v1, `verify_jwt=false`; source in `../supabase-leads/functions/join-early-access/index.ts`).
+- Destination: Supabase project `tabbeagle-test` (`gaileljkciseopfgwsbc`, us-east-1, free plan). Shared with the invoice TEST backend by a deliberate decision (2026-10-09, one free project). The leads table is `public.early_access_leads`, RLS on, no grants to anon/authenticated. Never the production project (`kbidusxzzuwmxsukqvpm`).
+- Endpoint: `https://gaileljkciseopfgwsbc.supabase.co/functions/v1/join-early-access` (Edge Function v1, `verify_jwt=false`; source in `../supabase-leads/functions/join-early-access/index.ts`).
 - Table: `public.early_access_leads` with RLS enabled and no policies. `anon` and `authenticated` have no grants. Only the function (service role) writes.
 - Responses: `201` created, `409` duplicate, `429` rate limited, `400` invalid, `403` origin not allowed.
 - The page sends no keys. The publishable key is not needed and is not in the page.
@@ -35,7 +35,7 @@ The browser suite needs a Chromium that Playwright can launch. It does not run `
 Manual check after deploy (run from your machine, because some sandboxes cannot reach `*.supabase.co`):
 
 ```bash
-curl -i -X POST https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access \
+curl -i -X POST https://gaileljkciseopfgwsbc.supabase.co/functions/v1/join-early-access \
   -H "Origin: https://tabbeagle.com" -H "Content-Type: application/json" \
   -d '{"name":"QA Test","email":"qa-test-REPLACE@example.com","business_type":"Agency","invoice_volume":"21–50","pain_point":"","consent_marketing":true,"source":"manual-check","website":""}'
 ```

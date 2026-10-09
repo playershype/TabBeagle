@@ -59,7 +59,7 @@ try {
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push(String(e)));
   page.on('request', (r) => { if (!r.url().startsWith(base)) requests.push(r.url()); });
-  const ENDPOINT = 'https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access';
+  const ENDPOINT = 'https://gaileljkciseopfgwsbc.supabase.co/functions/v1/join-early-access';
   // The leads function is mocked here: this sandbox cannot reach supabase.co. Real behaviour is checked in README.
   let mockStatus = 201;
   const seenPayloads = [];
