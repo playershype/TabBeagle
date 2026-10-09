@@ -24,20 +24,28 @@ PLAYWRIGHT_BROWSERS_PATH=… npm run test:browser   # Chromium checks; writes sc
 
 The browser suite needs a Chromium that Playwright can launch. It does not run `playwright install`.
 
-## Early-access form: connection plan (not active)
+## Early-access form: connected to the leads project
 
-The form validates and then reports that nothing was sent. `CONFIG.earlyAccessEndpoint` is empty.
+- Destination: Supabase project `tabbeagle-leads` (`agobuvygxvjgkdecijyp`, us-east-1, free plan). Not production (`kbidusxzzuwmxsukqvpm`), not invoice TEST (`gaileljkciseopfgwsbc`).
+- Endpoint: `https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access` (Edge Function v1, `verify_jwt=false`; source in `../supabase-leads/functions/join-early-access/index.ts`).
+- Table: `public.early_access_leads` with RLS enabled and no policies. `anon` and `authenticated` have no grants. Only the function (service role) writes.
+- Responses: `201` created, `409` duplicate, `429` rate limited, `400` invalid, `403` origin not allowed.
+- The page sends no keys. The publishable key is not needed and is not in the page.
 
-To connect it, after founder approval:
+Manual check after deploy (run from your machine, because some sandboxes cannot reach `*.supabase.co`):
 
-1. Choose the destination (see DESIGN-PROPOSAL §5). **Never** use the production project `kbidusxzzuwmxsukqvpm` or the invoice TEST project `gaileljkciseopfgwsbc` for leads without written approval.
-2. Expose a single write-only endpoint (a Supabase Edge Function or a small serverless handler) that:
-   - accepts only the fields in the payload: `name`, `email`, `business_type`, `invoice_volume`, `pain_point`, `consent_marketing`, `source`;
-   - validates again on the server, rate-limits by IP, and rejects a honeypot value;
-   - returns `201` on create, `409` on duplicate email, `429` when rate-limited;
-   - never returns stored records and never uses a service key in the browser.
-3. Set `earlyAccessEndpoint` to that URL, add the origin to CORS, and update `tests/site.test.mjs` to expect it.
-4. Add a privacy notice and an unsubscribe path before collecting real addresses.
+```bash
+curl -i -X POST https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access \
+  -H "Origin: https://tabbeagle.com" -H "Content-Type: application/json" \
+  -d '{"name":"QA Test","email":"qa-test-REPLACE@example.com","business_type":"Agency","invoice_volume":"21–50","pain_point":"","consent_marketing":true,"source":"manual-check","website":""}'
+```
+
+Expect `201`. Repeat the same command: expect `409`. Use a test address and delete the row afterwards with the Supabase SQL editor (`delete from early_access_leads where email_normalized like 'qa-test-%'`).
+
+Known limits:
+- The rate limit is per function instance. It stops floods, not determined abuse. Add an edge limit (Cloudflare or Supabase network restrictions) before a public launch.
+- Free projects can pause after inactivity. Check the current threshold in Supabase docs; a paused project makes the form fail.
+- Privacy policy and unsubscribe flow are still required before real addresses are collected in volume.
 
 ## Content rules (enforced by tests where possible)
 

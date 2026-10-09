@@ -53,7 +53,8 @@ test('local assets referenced by the page exist', () => {
 test('no external network dependencies, trackers or insecure links', () => {
   assert.doesNotMatch(html, /<script[^>]+src=/i, 'no external scripts');
   assert.doesNotMatch(html, /<link[^>]+rel="stylesheet"/i, 'no external stylesheets');
-  assert.doesNotMatch(html, /https?:\/\/(?!tabbeagle\.com)/i, 'no absolute external URLs');
+  const withoutEndpoint = html.replace('https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access', '');
+  assert.doesNotMatch(withoutEndpoint, /https?:\/\/(?!tabbeagle\.com)/i, 'no absolute external URLs besides the approved endpoint');
   assert.doesNotMatch(html, /google-analytics|gtag\(|googletagmanager|facebook|hotjar|segment\.|fbq\(/i, 'no trackers');
   assert.doesNotMatch(html, /http:\/\//i, 'no http links');
 });
@@ -61,11 +62,17 @@ test('no external network dependencies, trackers or insecure links', () => {
 test('no production or invoice-database identifiers and no secrets in the page', () => {
   assert.doesNotMatch(html, /kbidusxzzuwmxsukqvpm/, 'production Supabase project must not be referenced');
   assert.doesNotMatch(html, /gaileljkciseopfgwsbc/, 'invoice TEST project must not be referenced');
-  assert.doesNotMatch(html, /supabase\.co|sb_publishable_|sb_secret_|service_role|eyJhbGci/i, 'no Supabase URLs or keys');
+  assert.doesNotMatch(html, /sb_publishable_|sb_secret_|service_role|eyJhbGci/i, 'no Supabase keys in the page');
 });
 
-test('early access endpoint is unset in the preview build', () => {
-  assert.match(html, /earlyAccessEndpoint:\s*''/, 'endpoint must stay empty until approved');
+test('early access endpoint points only at the approved leads function', () => {
+  const urls = [...html.matchAll(/https:\/\/[a-z0-9.-]+\.supabase\.co[^'"\s]*/g)].map((m) => m[0]);
+  assert.deepEqual(urls, ['https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access']);
+  assert.match(html, /earlyAccessEndpoint:\s*'https:\/\/agobuvygxvjgkdecijyp\.supabase\.co\/functions\/v1\/join-early-access'/);
+});
+
+test('form sends the honeypot value so the server can reject bots', () => {
+  assert.match(html, /website: \(form\.querySelector\('input\[name="website"\]'\)/);
 });
 
 test('copy avoids unverified claims and invented figures', () => {

@@ -59,6 +59,17 @@ try {
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push(String(e)));
   page.on('request', (r) => { if (!r.url().startsWith(base)) requests.push(r.url()); });
+  const ENDPOINT = 'https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access';
+  // The leads function is mocked here: this sandbox cannot reach supabase.co. Real behaviour is checked in README.
+  let mockStatus = 201;
+  const seenPayloads = [];
+  await page.route(ENDPOINT, async (route) => {
+    if (route.request().method() === 'OPTIONS') {
+      return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': base.replace(/\/$/, ''), 'Access-Control-Allow-Headers': 'content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
+    }
+    seenPayloads.push(route.request().postDataJSON());
+    await route.fulfill({ status: mockStatus, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': base.replace(/\/$/, '') }, body: JSON.stringify(mockStatus === 201 ? { ok: true } : { error: 'x' }) });
+  });
   await page.goto(base, { waitUntil: 'load' });
 
   await check('no console errors or page exceptions on load', async () => {
@@ -96,7 +107,7 @@ try {
     assert.match(msg, /name@company\.com/);
   });
 
-  await check('valid submission in preview build is honest and sends nothing', async () => {
+  await check('valid submission posts the approved payload and shows success on 201', async () => {
     await page.fill('#ea-email', 'test.person@example.com');
     await page.selectOption('#ea-type', 'Agency');
     await page.selectOption('#ea-volume', '21–50');
@@ -104,10 +115,43 @@ try {
     // Honeypot must be empty, and the minimum fill time must pass.
     await page.waitForTimeout(2600);
     await page.click('#ea-submit');
+    await page.waitForSelector('#ea-status.ok', { timeout: 5000 });
     const status = await page.textContent('#ea-status');
-    assert.match(status, /Preview build: your details were not sent/);
-    const external = requests.filter((u) => !u.startsWith(base));
-    assert.deepEqual(external, [], 'no external requests');
+    assert.match(status, /You are on the list/);
+    assert.equal(seenPayloads.length, 1);
+    const p = seenPayloads[0];
+    assert.equal(p.email, 'test.person@example.com');
+    assert.equal(p.business_type, 'Agency');
+    assert.equal(p.invoice_volume, '21–50');
+    assert.equal(p.consent_marketing, true);
+    assert.equal(p.website, '');
+    assert.deepEqual(Object.keys(p).sort(), ['business_type', 'consent_marketing', 'email', 'invoice_volume', 'name', 'pain_point', 'source', 'website']);
+    const external = requests.filter((u) => !u.startsWith(base) && u !== ENDPOINT);
+    assert.deepEqual(external, [], 'no external requests except the approved endpoint');
+  });
+
+  await check('server 409 shows duplicate message, 429 shows rate message, 500 shows retry message', async () => {
+    const fill = async (email) => {
+      await page.fill('#ea-name', 'Test Person');
+      await page.fill('#ea-email', email);
+      await page.selectOption('#ea-type', 'Agency');
+      await page.selectOption('#ea-volume', '1–20');
+      await page.check('#ea-consent');
+    };
+    // Reset the per-browser duplicate memory and the cooldown between cases.
+    const cases = [[409, /already on the early access list/], [429, /Too many attempts/], [500, /could not send your details/]];
+    for (const [code, re] of cases) {
+      mockStatus = code;
+      await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForTimeout(2600);
+      await fill(`case-${code}@example.com`);
+      await page.click('#ea-submit');
+      await page.waitForFunction(() => document.getElementById('ea-status').classList.contains('show') && document.getElementById('ea-status').textContent.length > 0, null, { timeout: 5000 });
+      const text = await page.textContent('#ea-status');
+      assert.match(text, re, `status for ${code}`);
+    }
+    mockStatus = 201;
   });
 
   await check('screenshot of form states (desktop)', async () => {
@@ -116,8 +160,8 @@ try {
   });
 
   await page.close();
-  await check('no external requests during whole session', async () => {
-    assert.deepEqual(requests, []);
+  await check('no requests outside the site except the approved leads endpoint', async () => {
+    assert.deepEqual(requests.filter((u) => u !== ENDPOINT), []);
   });
 } finally {
   await browser.close();

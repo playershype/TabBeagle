@@ -515,7 +515,7 @@
 
       <div class="form-status" id="ea-status" role="status" aria-live="polite"></div>
       <button class="btn btn-primary" type="submit" id="ea-submit">Join early access</button>
-      <p class="fine">Preview only: submissions are not transmitted until early access is connected.</p>
+      <p class="fine">Your details go only to the early access list. We will never share them.</p>
     </form>
   </div>
 </section>
@@ -554,10 +554,11 @@
 (function () {
   'use strict';
 
-  // Configuration. Leave endpoint empty until the integration plan in README.md is approved.
+  // Configuration. Points only at the dedicated leads project (tabbeagle-leads). The endpoint is public by design:
+  // it carries no key, and the function validates input and writes with a server-side key.
   // Never point this at the production project or at the invoice TEST database.
   var CONFIG = {
-    earlyAccessEndpoint: '',
+    earlyAccessEndpoint: 'https://agobuvygxvjgkdecijyp.supabase.co/functions/v1/join-early-access',
     minFillMs: 2500,
     resubmitCooldownMs: 30000
   };
@@ -658,7 +659,8 @@
       invoice_volume: fieldFor('invoiceVolume').value,
       pain_point: fieldFor('pain').value.trim().slice(0, 300),
       consent_marketing: true,
-      source: 'landing-preview'
+      source: 'landing-preview',
+      website: (form.querySelector('input[name="website"]') || { value: '' }).value
     };
 
     if (alreadySubmitted(payload.email)) {
@@ -666,7 +668,7 @@
       return;
     }
 
-    // Preview build: no endpoint configured. Be explicit; never pretend the lead was stored.
+    // No endpoint configured: be explicit; never pretend the lead was stored.
     if (!CONFIG.earlyAccessEndpoint) {
       showStatus('preview', 'Preview build: your details were not sent. This form is not connected to the early access list yet, so nothing was stored.');
       return;
@@ -689,15 +691,20 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     }).then(function (res) {
+      if (res.status === 201) {
+        rememberSubmitted(payload.email);
+        form.reset();
+        showStatus('ok', 'You are on the list. We will email you when a spot opens.');
+        return;
+      }
       if (res.status === 409) { rememberSubmitted(payload.email); throw new Error('duplicate'); }
       if (res.status === 429) { throw new Error('rate'); }
-      if (!res.ok) { throw new Error('server'); }
-      rememberSubmitted(payload.email);
-      form.reset();
-      showStatus('ok', 'You are on the list. We will email you when a spot opens.');
+      if (res.status === 400 || res.status === 413) { throw new Error('invalid'); }
+      throw new Error('server');
     }).catch(function (err) {
       if (err.message === 'duplicate') showStatus('ok', 'That email is already on the early access list.');
       else if (err.message === 'rate') showStatus('bad', 'Too many attempts. Please wait a few minutes and try again.');
+      else if (err.message === 'invalid') showStatus('bad', 'Some details were not accepted. Check the form and try again.');
       else showStatus('bad', 'We could not send your details. Check your connection and try again.');
     }).finally(function () {
       inFlight = false;
