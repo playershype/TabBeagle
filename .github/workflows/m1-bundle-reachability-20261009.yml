@@ -1,0 +1,69 @@
+name: M1 Android JavaScript vulnerable-module reachability TEST audit
+on:
+  push:
+    branches: [codex/m1-android-bundle-reachability-20261009]
+    paths:
+      - mobile/scripts/m1-bundle-reachability.mjs
+      - .github/workflows/m1-bundle-reachability-20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exported-android-source-inspection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      npm_config_legacy_peer_deps: 'true'
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Confirm isolated branch and static audit conditions
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-android-bundle-reachability-20261009'
+          test -f scripts/m1-security-risk-gate.mjs
+          test -f scripts/m1-bundle-reachability.mjs
+          node --check scripts/m1-bundle-reachability.mjs
+      - name: Install original pinned Expo54 dependency graph
+        run: npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Save unaltered npm advisory JSON and baseline guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          rc=0
+          npm audit --omit=dev --json > m1-security-audit.json || rc=$?
+          if test "$rc" -gt 1; then exit "$rc"; fi
+          node scripts/m1-security-risk-gate.mjs m1-security-audit.json
+      - name: Run tests and TypeScript
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+      - name: Produce actual Android Metro source map without altering native app
+        run: |
+          set -euo pipefail
+          CI=1 npx expo export --platform android --output-dir dist --dump-sourcemap
+      - name: Count audited packages present in exported Android JS source map
+        run: |
+          set -euo pipefail
+          node scripts/m1-bundle-reachability.mjs
+      - name: Upload derived report only, no source maps or credentials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-Android-RealJS-Module-Reachability-TEST
+          path: mobile/m1-android-bundle-reachability.json
+          retention-days: 30
+          if-no-files-found: warn
