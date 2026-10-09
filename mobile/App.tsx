@@ -20,6 +20,7 @@ import AddInvoiceScreen from './src/screens/AddInvoiceScreen';
 import AddCustomerScreen from './src/screens/AddCustomerScreen';
 import InvoiceDetailScreen from './src/screens/InvoiceDetailScreen';
 import AccountPasswordScreen from './src/screens/AccountPasswordScreen';
+import TenantProbeScreen from './src/screens/TenantProbeScreen';
 import { testPasswordAuthEnabled } from './src/lib/config';
 const Stack = createNativeStackNavigator<RootStackParams>();
 
@@ -57,6 +58,7 @@ function OrganizationGate() {
         <Stack.Screen name="AddInvoice" component={AddInvoiceScreen} options={{ title: 'New invoice' }} />
         <Stack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} options={{ title: 'Invoice details' }} />
         {testPasswordAuthEnabled && <Stack.Screen name="AccountPassword" component={AccountPasswordScreen} options={{ title: 'Account security · TEST' }} />}
+        {testPasswordAuthEnabled && <Stack.Screen name="TenantProbe" component={TenantProbeScreen} options={{ title: 'M1 Security Probe · TEST' }} />}
       </Stack.Navigator>
     </NavigationContainer>
   </OrganizationContext.Provider>;
