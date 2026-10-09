@@ -1,0 +1,62 @@
+name: TabBeagle Second Brain REV3.36 - safe source snapshot
+on:
+  push:
+    branches: [codex/tabbeagle-v0.1-rc1-test]
+    paths: [.github/workflows/second-brain-rev336-source-snapshot.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Package verified existing RC1 source and both existing web landing candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/tabbeagle-v0.1-rc1-test'
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main refs/heads/website-launch:refs/remotes/origin/website-launch
+          mkdir -p snapshot/TABBEAGLE_SOURCE_RC1/{Mobile,Backend,Web-Main,Web-Website-Launch,GitHub}
+          for dir in mobile/src mobile/tests mobile/scripts mobile/assets backend/src backend/tests backend/scripts backend/supabase .github/workflows; do
+            test -d "$dir"
+            mkdir -p "snapshot/TABBEAGLE_SOURCE_RC1/GitHub/$dir"
+            cp -a "$dir/." "snapshot/TABBEAGLE_SOURCE_RC1/GitHub/$dir/"
+          done
+          for f in mobile/App.tsx mobile/app.json mobile/index.js mobile/package.json mobile/package-lock.json mobile/tsconfig.json backend/package.json backend/package-lock.json backend/tsconfig.json; do
+            test -f "$f"
+            mkdir -p "snapshot/TABBEAGLE_SOURCE_RC1/GitHub/$(dirname "$f")"
+            cp "$f" "snapshot/TABBEAGLE_SOURCE_RC1/GitHub/$f"
+          done
+          git show origin/main:docs/index.html > snapshot/TABBEAGLE_SOURCE_RC1/Web-Main/index.html
+          git show origin/website-launch:docs/index.html > snapshot/TABBEAGLE_SOURCE_RC1/Web-Website-Launch/index.html
+          git show origin/website-launch:docs/CNAME > snapshot/TABBEAGLE_SOURCE_RC1/Web-Website-Launch/CNAME
+          mkdir -p snapshot/TABBEAGLE_SOURCE_RC1/Web-Website-Launch/assets
+          for f in docs/assets/tabbeagle-logo.jpg docs/assets/tabbeagle-logo.svg docs/assets/file_00000000a82881f6978d6886de2de7df.png; do
+            git show "origin/website-launch:$f" > "snapshot/TABBEAGLE_SOURCE_RC1/Web-Website-Launch/assets/$(basename "$f")"
+          done
+          {
+            echo "RC_BUILD_SOURCE_COMMIT=7a1439a7cc8d9faa83b4356476584909d566575a"
+            echo "RC_CAPTURE_HEAD=$(git rev-parse HEAD)"
+            echo "ORIGINAL_MAIN_LANDING_COMMIT=$(git rev-parse origin/main)"
+            echo "ORIGINAL_WEBSITE_LANDING_COMMIT=$(git rev-parse origin/website-launch)"
+            echo "RC_SOURCE_UNCHANGED_SINCE_SIGNED_BUILD_CHECK=APP_PACKAGE_BACKEND_ONLY"
+          } > snapshot/TABBEAGLE_SOURCE_RC1/SOURCE-PROVENANCE.txt
+          for f in mobile/App.tsx mobile/app.json mobile/package.json mobile/package-lock.json backend/package.json backend/package-lock.json; do
+            current="$(git hash-object "$f")"
+            previous="$(git show 7a1439a7cc8d9faa83b4356476584909d566575a:"$f" | git hash-object --stdin)"
+            if test "$current" != "$previous"; then echo "SOURCES_CHANGED_SINCE_SIGNED_RC_BUILD: $f"; exit 1; fi
+          done
+          find snapshot -type f -print0 | sort -z | xargs -0 sha256sum > snapshot/SOURCE_SHA256SUMS.txt
+          printf 'Source snapshot PASS. Files: '
+          find snapshot -type f | wc -l
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TABBEAGLE-REV336-VERIFIED-GITHUB-SOURCE-SNAPSHOTS
+          path: snapshot
+          if-no-files-found: error
+          retention-days: 30
