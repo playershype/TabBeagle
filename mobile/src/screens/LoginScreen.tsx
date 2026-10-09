@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Image, Text } from 'react-native';
 import { getSupabase } from '../lib/supabase';
 import * as ExpoLinking from 'expo-linking';
-import { testPasswordAuthEnabled } from '../lib/config';
+import { config, testPasswordAuthEnabled } from '../lib/config';
+import { parseEmailProof } from '../lib/emailProof';
 import { Button, ErrorText, Field, Form, messageOf, ui } from '../components/UI';
 
 export default function LoginScreen() {
@@ -13,6 +14,8 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
+  const [showProof, setShowProof] = useState(false);
+  const [emailProof, setEmailProof] = useState('');
   const running = useRef(false);
   async function signIn() {
     if (running.current) return;
@@ -48,6 +51,28 @@ export default function LoginScreen() {
       }
     } finally { running.current = false; setBusy(false); }
   }
+  async function verifyInsideApp() {
+    if (running.current) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { setError('Enter the existing TEST account email first.'); return; }
+    running.current = true; setBusy(true); setError(null);
+    try {
+      const proof = parseEmailProof(emailProof, config.supabaseUrl!);
+      // A one-time proof must never be sent to our backend, logged, or persisted in the app.
+      setEmailProof('');
+      const client = getSupabase();
+      const result = proof.kind === 'email-code'
+        ? await client.auth.verifyOtp({ email: normalizedEmail, token: proof.token, type: 'email' })
+        : await client.auth.verifyOtp({ token_hash: proof.tokenHash, type: 'magiclink' });
+      if (result.error || !result.data.session) throw new Error('This one-time proof is expired, already used, or rejected. Do not open the same link again.');
+      if (result.data.session.user.email?.toLowerCase() !== normalizedEmail) {
+        await client.auth.signOut({ scope: 'local' });
+        throw new Error('This link belongs to a different TEST identity. Sign-in was canceled.');
+      }
+      setShowProof(false); setSent(false); setError(null);
+    } catch (e) { setError(messageOf(e)); }
+    finally { running.current = false; setBusy(false); }
+  }
   return <Form>
     <Image source={require('../../assets/brand.png')} accessibilityLabel="TabBeagle" style={{ width: 128, height: 128, alignSelf: 'center', marginTop: 36, marginBottom: 24, borderRadius: 24 }} />
     <Text style={ui.title}>Welcome to TabBeagle</Text>
@@ -56,6 +81,14 @@ export default function LoginScreen() {
     <Field label="Work email" value={email} onChangeText={value => { setEmail(value); setSent(false); setError(null); setRateLimited(false); }} autoCapitalize="none" keyboardType="email-address" autoComplete="email" editable={!busy} />
     {method === 'password' && testPasswordAuthEnabled && <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoCorrect={false} autoCapitalize="none" autoComplete="current-password" editable={!busy} />}
     {method === 'link' && sent && <Text style={[ui.subtitle, { marginTop: 20 }]}>Check your inbox. Open the newest sign-in link on this device. If Gmail shows an empty browser, use its menu to open the link in Chrome.</Text>}
+    {method === 'link' && <>
+      <Button title={showProof ? 'Hide in-app verification' : 'Gmail or Chrome blank? Verify inside TabBeagle'} secondary disabled={busy} onPress={() => { setShowProof(!showProof); setError(null); }} />
+      {showProof && <>
+        <Text style={ui.subtitle}>Do NOT tap the email link. Long-press the newest sign-in link in Gmail, choose Copy link, return here and paste it. If the email includes a 6-digit code, enter that instead. Never paste a link or code in chat.</Text>
+        <Field label="Copied Supabase link or 6-digit code" value={emailProof} onChangeText={setEmailProof} autoCapitalize="none" autoCorrect={false} editable={!busy} multiline={true} numberOfLines={2} />
+        <Button title="Verify inside app (no browser)" onPress={verifyInsideApp} disabled={!emailProof.trim()} busy={busy} />
+      </>}
+    </>}
     <ErrorText message={error} />
     <Button title={method === 'password' ? 'Sign in with password' : sent ? 'Send a new link' : 'Send sign-in link'} onPress={signIn} busy={busy} disabled={method === 'link' && rateLimited} />
     {testPasswordAuthEnabled && <>
