@@ -1,0 +1,132 @@
+name: M1 HTTPS APK PostCSS 8.5.23 safe patch native TEST validation
+on:
+  push:
+    branches: [codex/m1-https-qa-postcss-patch-20261009]
+    paths: [.github/workflows/m1-https-qa-postcss-patch-20261009.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evaluate-postcss-safe-qa-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      npm_config_legacy_peer_deps: 'true'
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Confirm source is latest genuine HTTPS QA app but not stable release branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-https-qa-postcss-patch-20261009'
+          grep -F 'TenantProbeScreen' App.tsx
+          grep -F 'expo-linking' App.tsx
+          grep -F 'runTenantProbe' src/screens/TenantProbeScreen.tsx
+          node - <<'NODE'
+          const p=require('./package.json');
+          if(!p.dependencies?.expo?.startsWith('~54') || p.dependencies['react-native']!=='0.81.5')throw Error('Unexpected Expo54 HTTPS QA base');
+          if(p.overrides?.postcss)throw Error('QA base already overridden; inspect before continuing');
+          NODE
+      - name: Apply scoped PostCSS 8.5.23 in temporary runner only
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm view postcss@8.5.23 version
+          npm pkg set overrides.postcss=8.5.23
+          npm install --package-lock-only --ignore-scripts --legacy-peer-deps --no-fund --no-audit
+          npm ci --legacy-peer-deps --no-fund --no-audit
+          node - <<'NODE'
+          const p=require('./package.json');
+          const l=require('./package-lock.json');
+          if(p.overrides?.postcss!=='8.5.23')throw Error('PostCSS compatibility override missing');
+          const found=Object.entries(l.packages).filter(([n])=>n==='node_modules/postcss'||n.endsWith('/node_modules/postcss')).map(([path,d])=>({path,version:d.version}));
+          if(!found.length||found.some(x=>x.version!=='8.5.23'))throw Error('Unpatched PostCSS installed '+JSON.stringify(found));
+          console.log('QA_PATCH_POSTCSS_GRAPH',JSON.stringify(found));
+          NODE
+      - name: Compare exactly this HTTPS QA base 36 advisory set with patched candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          rc=0
+          npm audit --omit=dev --json > m1-https-postcss-audit.json || rc=$?
+          if test "$rc" -gt 1; then exit "$rc"; fi
+          node - <<'NODE'
+          const fs=require('fs');
+          const result=JSON.parse(fs.readFileSync('m1-https-postcss-audit.json','utf8'));
+          const v=result.metadata?.vulnerabilities;
+          if(!v)throw Error('Missing npm vulnerability metadata');
+          const report={
+            originalHTTPSQA:{total:36,high:23,moderate:13,critical:0},
+            patched:v,
+            postcssVulnerabilityRemains:Boolean(result.vulnerabilities?.postcss),
+            patch:'postcss@8.5.23',
+            codeSource:'exact HTTPS SecurityProbe TEST original branch',
+            scope:'DISPOSABLE_CI_LAB_NOT_PROMOTED'
+          };
+          fs.writeFileSync('m1-https-postcss-patch-report.json',JSON.stringify(report,null,2)+'\n');
+          console.log('POSTCSS_HTTPSQA_PATCH_DELTA',JSON.stringify(report));
+          if(v.critical!==0 || v.high>22 || v.total>35 || result.vulnerabilities?.postcss)
+            throw Error('PostCSS patch did not reduce security alerts as expected');
+          NODE
+      - name: Test actual QA app business rules and TypeScript
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+      - name: Verify Android Metro JavaScript and brand asset remain compatible
+        run: |
+          set -euo pipefail
+          npm run bundle:android
+      - name: Prebuild a uniquely named TEST-only candidate; cannot overwrite user's app
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const file='app.json';const p=JSON.parse(fs.readFileSync(file,'utf8'));
+          p.expo.name='TabBeagle PostCSS HTTPS Patch LAB';
+          p.expo.slug='tabbeagle-m1-https-postcss-lab';
+          p.expo.scheme='tabbeaglehttpspatchlab';
+          p.expo.android.package='com.tabbeagle.user.httpspatchlab';
+          fs.writeFileSync(file,JSON.stringify(p,null,2));
+          NODE
+          CI=1 npx expo prebuild --platform android --no-install
+      - name: Validate native Android signed release compatibility without APK promotion
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$TOOLS/apksigner" verify --verbose "$APK"
+          "$TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.httpspatchlab'"
+          echo 'HTTPSQA_POSTCSS_NATIVE_SIGNED_BUILD_PASS_NO_PRODUCTION_RELEASE'
+      - name: Upload only proposed lockfile and security counts; no QA APK / secrets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-HTTPSQA-PostCSS-8.5.23-ValidatedCandidate-NotPromoted
+          path: |
+            mobile/package.json
+            mobile/package-lock.json
+            mobile/m1-https-postcss-patch-report.json
+          retention-days: 30
+          if-no-files-found: warn
