@@ -45,6 +45,13 @@ for(const p of androidMaps){
 if(!packageModules.has('react-native')||packageModules.size<15){
  throw new Error('Android source map lacks expected React Native modules; do not make absence claims.');
 }
+// The expected-linker sanity check guards against overinterpreting source-map absence.
+const selectedModuleHints=allSourceSamples.filter(src=>/linking|@expo\\/cli|supabase-js|react-navigation/i.test(src)).slice(0,50).map(src=>{
+ const marker='node_modules/';const index=src.lastIndexOf(marker);
+ return index>=0?src.slice(index).slice(0,160):'<app-source> '+path.basename(src);
+});
+const linkerHints=selectedModuleHints.filter(src=>/linking/i.test(src));
+if(!linkerHints.length) throw new Error('No linking-related source modules found: Metro source-map completeness uncertain');
 const alerts=dependencyReport.vulnerabilities||{};
 const analyzed=Object.entries(alerts).map(([name,item])=>({
  name,severity:item.severity,
@@ -81,5 +88,6 @@ console.log('M1_JS_BUNDLE_REACHABILITY',JSON.stringify({
  maps:result.androidSourceMaps.length,sourceEntries:result.totalSourceEntries,distinctPackages:items.size,
  auditedNames:analyzed.length,present:result.presentCount,absent:result.absentCount,
  presentNames:analyzed.filter(x=>x.presentInMetroJavascriptSourceMap).map(x=>x.name),
+  linkerHints,
  absentNames:analyzed.filter(x=>!x.presentInMetroJavascriptSourceMap).map(x=>x.name)
 }));
