@@ -1,0 +1,135 @@
+name: M1 js-yaml 3x/4x scoped advisory patch LAB
+on:
+  push:
+    branches:
+      - codex/m1-jsyaml-patch-lab-20261009
+    paths:
+      - .github/workflows/m1-jsyaml-patch-lab-20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scoped-jsyaml-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      npm_config_legacy_peer_deps: 'true'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Confirm isolated branch, SDK54/Nav7 and upstream published fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/m1-jsyaml-patch-lab-20261009"
+          node - <<'NODE'
+          const p=require('./package.json');
+          if(!p.dependencies.expo.startsWith('~54') || !p.dependencies['@react-navigation/native'].startsWith('^7') || p.overrides?.postcss!=='8.5.23') throw Error('Unexpected baseline');
+          const lock=require('./package-lock.json');
+          const list=Object.entries(lock.packages).filter(([name])=>name==='node_modules/js-yaml'||name.endsWith('/node_modules/js-yaml')).map(([path,data])=>({path,version:data.version}));
+          if(!list.length || list.some(({version})=>!/^[34]\./.test(version)))throw Error('Non-3.x/4.x js-yaml graph, manual review required');
+          console.log('BASELINE_JSYAML',JSON.stringify(list));
+          NODE
+          npm view js-yaml@3.15.2 version
+          npm view js-yaml@4.3.1 version
+      - name: Apply MAJOR-AWARE scoped overrides ONLY in disposable CI checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const path='package.json';
+          const p=JSON.parse(fs.readFileSync(path,'utf8'));
+          p.overrides={...p.overrides,'js-yaml@^3.0.0':'3.15.2','js-yaml@^4.0.0':'4.3.1'};
+          if(p.overrides.postcss!=='8.5.23')throw Error('Other approved override lost');
+          fs.writeFileSync(path,JSON.stringify(p,null,2)+'\n');
+          NODE
+          npm install --package-lock-only --ignore-scripts --legacy-peer-deps --no-fund --no-audit
+          npm ci --legacy-peer-deps --no-fund --no-audit
+          node - <<'NODE'
+          const lock=require('./package-lock.json');
+          const versions=Object.entries(lock.packages).filter(([path])=>path==='node_modules/js-yaml'||path.endsWith('/node_modules/js-yaml')).map(([path,data])=>({path,version:data.version}));
+          if(!versions.length || versions.some(({version})=>!['3.15.2','4.3.1'].includes(version)))throw Error('Unsafe js-yaml still installed: '+JSON.stringify(versions));
+          console.log('PATCHED_JSYAML',JSON.stringify(versions));
+          NODE
+      - name: Compare full runtime advisories without suppressing warnings
+        shell: bash
+        run: |
+          set -euo pipefail
+          ec=0
+          npm audit --omit=dev --json > m1-jsyaml-audit.json || ec=$?
+          if [ "$ec" -gt 1 ]; then exit "$ec"; fi
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const a=JSON.parse(fs.readFileSync('m1-jsyaml-audit.json','utf8'));
+          const v=a.metadata?.vulnerabilities;
+          if(!v)throw Error('Missing npm audit result');
+          const result={baseline:{critical:0,high:22,moderate:13,total:35},
+            patched:v,jsYamlStillVulnerable:Boolean(a.vulnerabilities?.['js-yaml']),
+            verdict:'TEST_CANDIDATE_UNPROMOTED'};
+          fs.writeFileSync('m1-jsyaml-risk-delta.json',JSON.stringify(result,null,2)+'\n');
+          console.log('AUDIT_DELTA',JSON.stringify(result));
+          if(v.critical>0 || v.high>22 || v.total>35 || a.vulnerabilities?.['js-yaml'])throw Error('Patch did not resolve js-yaml or triggered a regression');
+          NODE
+      - name: Run entire mobile source test suite and TS typecheck
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+      - name: Export Metro Android JavaScript and assets
+        run: |
+          set -euo pipefail
+          npm run bundle:android
+          echo "ANDROID_METRO_ASSETS_PASS"
+      - name: Prebuild and verify disposable LAB-only Android identifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+          app.expo.name='TabBeagle JSYAML Compatibility Lab';
+          app.expo.slug='tabbeagle-jsyaml-test-lab';
+          app.expo.scheme='tabbeaglejsyamllab';
+          app.expo.android.package='com.tabbeagle.user.jsyamllab';
+          fs.writeFileSync('app.json',JSON.stringify(app,null,2));
+          NODE
+          CI=1 npx expo prebuild --platform android --no-install
+          test -s android/gradlew
+      - name: Build and verify independently signed LAB Android APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.jsyamllab'"
+          echo "SCOPED_JSYAML_ANDROID_RELEASE_PASS_UNPROMOTED"
+      - name: Preserve patch package graph and audit delta WITHOUT publishing APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-JSYAML-Scoped-3x-4x-Patch-LAB-NotPromoted
+          path: |
+            mobile/package.json
+            mobile/package-lock.json
+            mobile/m1-jsyaml-risk-delta.json
+          if-no-files-found: warn
+          retention-days: 30
