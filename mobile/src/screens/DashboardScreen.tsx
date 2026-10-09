@@ -52,6 +52,7 @@ export default function DashboardScreen({ navigation }: NativeStackScreenProps<R
     }}
     ListFooterComponent={<>
       {testPasswordAuthEnabled && <Button title="Account security · Create TEST password" secondary onPress={() => navigation.navigate('AccountPassword')} />}
+      {testPasswordAuthEnabled && <Button title="M1 · Test company isolation (HTTPS)" secondary onPress={() => navigation.navigate('TenantProbe')} />}
       <Button title="Sign out" secondary onPress={signOut} />
     </>}
   /></View>;
