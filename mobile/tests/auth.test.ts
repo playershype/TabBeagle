@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAuthClient } from '../src/lib/authClient';
-import { AUTH_REDIRECT } from '../src/lib/authCallback';
+import { AUTH_REDIRECT, callbackCode } from '../src/lib/authCallback';
 test('Supabase client uses S256 PKCE, exchanges a verifier and restores its stored session', async () => {
   const values = new Map<string,string>();
   const storage = { getItem: (key:string) => values.get(key) ?? null, setItem: (key:string,value:string) => {values.set(key,value);}, removeItem:(key:string)=>{values.delete(key);} };
@@ -28,4 +28,15 @@ test('Supabase client uses S256 PKCE, exchanges a verifier and restores its stor
   assert.equal((await reopened.auth.getSession()).data.session?.user.id,user.id);
   await reopened.auth.signOut({scope:'local'}); reopened.auth.stopAutoRefresh();
   assert.equal((await reopened.auth.getSession()).data.session,null);
+});
+
+
+test('magic-link callbacks are scoped to the exact installed LAB scheme and callback path', () => {
+  const authLab='tabbeagleauthlab://auth/callback';
+  assert.equal(callbackCode(authLab+'?code=jj-spa-code',authLab),'jj-spa-code');
+  assert.equal(callbackCode('tabbeagle://auth/callback?code=wrong-app',authLab),null);
+  assert.equal(callbackCode('tabbeaglenavlab://auth/callback?code=other-lab',authLab),null);
+  assert.equal(callbackCode('tabbeagleauthlab://unexpected/path?code=x',authLab),null);
+  assert.throws(()=>callbackCode(authLab+'?error=access_denied',authLab),/expired or was rejected/);
+  assert.throws(()=>callbackCode(authLab+'?code=one&code=two',authLab),/incomplete/);
 });
