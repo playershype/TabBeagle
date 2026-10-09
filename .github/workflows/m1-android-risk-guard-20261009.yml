@@ -1,0 +1,64 @@
+name: M1 Android vulnerability nonregression gate - TEST only
+on:
+  push:
+    branches:
+      - codex/m1-android-risk-guard-20261009
+    paths:
+      - mobile/scripts/m1-security-risk-gate.mjs
+      - .github/workflows/m1-android-risk-guard-20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-risk-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      npm_config_legacy_peer_deps: 'true'
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Enforce isolated TEST branch and no unsupported upgrade
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m1-android-risk-guard-20261009'
+      - name: Install exactly locked dependencies
+        run: npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Perform full npm vulnerability scan and enforce no increase
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          npm audit --omit=dev --json > m1-security-audit.json || status=$?
+          if test "$status" -gt 1; then exit "$status"; fi
+          node scripts/m1-security-risk-gate.mjs m1-security-audit.json
+      - name: Verify source tests and typescript
+        run: |
+          set -euo pipefail
+          npm test
+          npm run typecheck
+      - name: Verify Expo Metro Android assets including brand
+        run: |
+          set -euo pipefail
+          npm run bundle:android
+          echo 'ANDROID_METRO_ASSETS_PASS'
+      - name: Archive non-sensitive status report, NOT an app or credentials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-Android-Security-Baseline-Guard-TEST
+          path: mobile/m1-risk-guard-report.json
+          if-no-files-found: warn
+          retention-days: 30
