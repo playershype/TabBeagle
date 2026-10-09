@@ -1,0 +1,189 @@
+name: TabBeagle v0.1 RC1 TEST - signed Android and backend acceptance
+on:
+  push:
+    branches:
+      - codex/tabbeagle-v0.1-rc1-test
+    paths:
+      - .github/workflows/tabbeagle-v01-rc1-test.yml
+      - mobile/App.tsx
+      - mobile/app.json
+      - mobile/src/screens/DashboardScreen.tsx
+      - mobile/src/types.ts
+      - mobile/package.json
+      - mobile/package-lock.json
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-rc1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      npm_config_legacy_peer_deps: 'true'
+      EXPO_PUBLIC_API_URL: https://tabbeagle-api-test-test.up.railway.app
+      EXPO_PUBLIC_SUPABASE_URL: https://gaileljkciseopfgwsbc.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_DoUb-moG-duKxrBAt7znpg_Gw-gjAe7
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Enforce isolated candidate TEST identity and product navigation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/tabbeagle-v0.1-rc1-test'
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const app=JSON.parse(fs.readFileSync('app.json','utf8')).expo;
+          const p=require('./package.json');
+          const src=fs.readFileSync('App.tsx','utf8');
+          const dash=fs.readFileSync('src/screens/DashboardScreen.tsx','utf8');
+          const cfg=fs.readFileSync('src/lib/config.ts','utf8');
+          if (app.name!=='TabBeagle RC TEST'||app.version!=='0.1.0'||app.android?.package!=='com.tabbeagle.user.v01rc1test'
+            || app.scheme!=='tabbeaglerc01'||app.android?.allowBackup!==false
+            || app.icon!=='./assets/brand.png'||app.splash?.image!=='./assets/brand.png')throw Error('RC1 package, brand, scheme or no-backup not pinned');
+          if(!p.dependencies.expo.startsWith('~54')||p.dependencies['react-native']!=='0.81.5'
+            || p.overrides?.postcss!=='8.5.23')throw Error('Validated Expo54/RN0.81/PostCSS patch baseline changed');
+          if(src.includes('TenantProbeScreen')||dash.includes("navigate('TenantProbe')"))throw Error('QA diagnostic accidentally present in product navigation');
+          for(const term of ["AccountPasswordScreen","LoginScreen","DashboardScreen","AddInvoiceScreen","AddCustomerScreen","InvoiceDetailScreen"])if(!src.includes(term))throw Error('RC1 customer feature missing: '+term);
+          if(!dash.includes('TabBeagle v0.1 RC1 · TEST'))throw Error('RC1 banner missing');
+          if(!cfg.includes('gaileljkciseopfgwsbc.supabase.co'))throw Error('Supabase TEST safety gate not found');
+          console.log('RC1_TEST_SCOPE_PASS: unique APK, original branding and tested user navigation');
+          NODE
+      - name: Install exact signed-compatible security-patched dependency lockfile
+        run: npm ci --legacy-peer-deps --no-fund --no-audit
+      - name: Inspect runtime advisories and prevent new critical/high regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          rc=0
+          npm audit --omit=dev --json > m1-rc1-audit.json || rc=$?
+          if test "$rc" -gt 1; then exit "$rc"; fi
+          node - <<'NODE'
+          const fs=require('fs');
+          const a=require('./m1-rc1-audit.json');
+          const counts=a.metadata?.vulnerabilities;
+          if(!counts)throw Error('Missing vulnerability inventory');
+          const report={component:'TabBeagle v0.1 RC1 TEST Android',
+            counts,postcssRemediated:!a.vulnerabilities?.postcss,
+            expectedBaseline:{critical:0,high:22,moderate:13,total:35},
+            verdict:'SECURITY_WARNINGS_REMAIN_M1_NOT_CERTIFIED'};
+          fs.writeFileSync('m1-rc1-security-report.json',JSON.stringify(report,null,2)+'\n');
+          console.log('RC1_ANDROID_AUDIT_COUNTS',JSON.stringify(counts));
+          if(counts.critical>0||counts.high>22||counts.total>35||a.vulnerabilities?.postcss)
+            throw Error('RC1 security regression from validated PostCSS patch baseline');
+          NODE
+      - name: Verify configured endpoints and complete 23-test app suite
+        run: |
+          set -euo pipefail
+          npm run check:env
+          npm test
+          npm run typecheck
+          npm run bundle:android
+      - name: Generate native APK with unique RC1 package, original branding
+        run: |
+          set -euo pipefail
+          CI=1 npx expo prebuild --platform android --no-install
+          test -s android/gradlew
+          test -d android/app/src/main/res
+      - name: Sign RC1 release and verify package, icon and callback scheme
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$TOOLS/apksigner" verify --verbose "$APK"
+          "$TOOLS/aapt" dump badging "$APK" | grep -F "name='com.tabbeagle.user.v01rc1test'"
+          "$TOOLS/aapt" dump badging "$APK" | grep -F "versionName='0.1.0'"
+          "$TOOLS/aapt" dump badging "$APK" | grep -F "application-label:'TabBeagle RC TEST'"
+          "$TOOLS/aapt" dump badging "$APK" | grep -E 'application-icon-[0-9]+:'
+          "$TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml | grep 'tabbeaglerc01'
+          unzip -l "$APK" | grep 'assets/index.android.bundle'
+          cp "$APK" ../../TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk
+          sha256sum ../../TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk
+          echo 'RC1_NATIVE_APK_BRAND_PACKAGE_SIGNATURE_VERIFIED'
+      - name: Publish independently installable TEST candidate and audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: TabBeagle-v0.1-RC1-TEST-SIGNED-APK
+          path: |
+            mobile/TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk
+            mobile/m1-rc1-security-report.json
+          if-no-files-found: error
+          retention-days: 30
+  backend-rc1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Confirm original TEST Railway backend interfaces unchanged
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/tabbeagle-v0.1-rc1-test'
+          node - <<'NODE'
+          const p=require('./package.json');
+          if(!p.dependencies.next.startsWith('16.')||!p.engines.node.startsWith('>=22'))throw Error('Backend release lineage unexpected');
+          NODE
+      - name: Install backend and reject newly vulnerable runtime dependencies
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-fund --no-audit
+          npm audit --omit=dev
+      - name: Backend persistent data and authorization unit tests
+        run: npm test
+      - name: Backend TypeScript and Next build
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          npm run build
+      - name: Live TEST health and unauthenticated API negative checks
+        run: |
+          set -euo pipefail
+          node --input-type=module - <<'NODE'
+          const origin='https://tabbeagle-api-test-test.up.railway.app';
+          const checks=[
+            ['/api/health',200,{},'GET'],
+            ['/api/organizations',401,{},'GET'],
+            ['/api/invoices?organizationId=479d925c-7ed4-4479-9ef2-850c0607a048',401,{},'GET'],
+            ['/api/customers?organizationId=7da70daf-c1df-49b5-be80-f56fe3909043',401,{},'GET'],
+            ['/api/invoices/f37a8d95-f361-4238-90d9-ae03de6bec11',401,{},'GET'],
+            ['/api/invoices',401,{'Content-Type':'application/json'},'POST','{}'],
+            ['/api/invoices',401,{Authorization:'Bearer invalid-rc1-auth-probe'},'GET'],
+          ];
+          let failed=0;
+          for(const [route,expected,headers,method='GET',body] of checks){
+            const url=new URL(route,origin);
+            if(url.origin!==origin)throw Error('Refused non-TEST endpoint');
+            const res=await fetch(url,{method,headers,body,redirect:'error',signal:AbortSignal.timeout(16000)});
+            console.log((res.status===expected?'PASS':'FAIL')+' RC1_TEST_AUTH '+method+' '+url.pathname+' status='+res.status+' expected='+expected);
+            if(res.status!==expected)failed++;
+          }
+          if(failed)throw Error('RC1 failed TEST negative HTTPS security checks');
+          console.log('RC1_NEGATIVE_HTTPS_ONLY: dual authenticated JWT A/B gate still NOT executed');
+          NODE
