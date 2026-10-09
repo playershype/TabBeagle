@@ -36,13 +36,13 @@ RC1 deliberately has the unique deep-link scheme `tabbeaglerc01://` so installat
 
 | Check | Expected | Status |
 |---|---|---|
-| Signed RC APK CI, exact package + icon + unique scheme | PASS | Pending RC1 GitHub run |
-| JS tests incl. auth, idempotent invoice creation/retry, tenant probe contract | 23/23 | Pending RC1 GitHub run |
-| Next backend tests + production dependency audit | 12/12, 0 alerts | Pending RC1 GitHub run |
-| TypeScript and Metro JS bundle | PASS | Pending RC1 GitHub run |
-| Expo native prebuild, signed Gradle assembleRelease | PASS | Pending RC1 GitHub run |
-| No increase vs isolated 35 remaining Android npm advisories | 0 critical; ≤22 high; ≤35 total | Pending RC1 GitHub run |
-| No direct anonymous invoices, customers, org access via live TEST HTTPS | 401 | Pending RC1 GitHub run |
+| Signed RC APK CI, exact package + icon + unique scheme | PASS | **PASS — run 37931083943; signed APK + 65MB file verified** |
+| JS tests incl. auth, idempotent invoice creation/retry, tenant probe contract | 23/23 | **PASS — 23/23** |
+| Next backend tests + production dependency audit | 12/12, 0 alerts | **PASS — 12/12; 0 npm advisories** |
+| TypeScript and Metro JS bundle | PASS | **PASS** |
+| Expo native prebuild, signed Gradle assembleRelease | PASS | **PASS — native APK signed and verified** |
+| No increase vs isolated 35 remaining Android npm advisories | 0 critical; ≤22 high; ≤35 total | **PASS baseline control: 35 total, 22 high, 13 moderate, 0 critical** |
+| No direct anonymous invoices, customers, org access via live TEST HTTPS | 401 | **PASS — all six unauthorized calls returned 401; TEST health 200** |
 | User-observed separation of company invoices (in prior signed HTTPS app) | Functional PASS | Prior user attested; NOT an RC1 phone retest |
 | Signed JWT A/B direct HTTPS cross-tenant reads/writes | Strict PASS | **BLOCKED; NOT executed** |
 | 35 Android dependency advisories | Remediated or accepted | **OPEN**; only PostCSS fix validated |
@@ -51,3 +51,20 @@ RC1 deliberately has the unique deep-link scheme `tabbeaglerc01://` so installat
 | Production promotion / PR #1 merge | Only after M1 acceptance | **PROHIBITED** |
 
 **Invariants:** No `main` change, production Supabase, live Stripe/Resend, real invoices, original TEST dataset, existing signed APK, or landing changes. GitHub PR #1 remains DRAFT. The RC is neither a production app nor a certified M1 security attestation. GitHub Actions may publish a separate signed TEST installer, never an automatic deploy/merge.
+
+## Signed RC1 artifact, complete GitHub acceptance, and integrity
+
+**Final verified result**: [GitHub Actions run 37931083943](https://github.com/playershype/TabBeagle/actions/runs/37931083943) **SUCCESS** for BOTH jobs. Exact tested source commit `7a1439a7cc8d9faa83b4356476584909d566575a` (unchanged application code/locks after that run). APK Android package `com.tabbeagle.user.v01rc1test`, name `TabBeagle RC TEST`, Android display version `0.1.0`, custom isolated URI scheme `tabbeaglerc01://`, with an `application-icon` resource confirmed by aapt. Signed and verified with Android apksigner. This is a CI TEST signature, not a Play Store production signing claim.
+
+- Valid GitHub artifact **#11617335024**: `TabBeagle-v0.1-RC1-TEST-SIGNED-APK` (contains both the **signed 65 MB APK** and audit JSON; compressed artifact approximately 30 MB).
+- APK filename: `TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-FOR-PRODUCTION.apk` (the actual GitHub filename uses `NOT-PRODUCTION`, see below for canonical filename).
+- **Canonical exact artifact filename:** `TabBeagle-v0.1-RC1-TEST-SIGNED-NOT-PRODUCTION.apk`.
+- Verified SHA-256: `f2ad40751d1a7c185ebfd8c2d92a4ca7ea2ab6b2cf834ab5fb2cb95495af354a`. SHA matched both the GitHub Actions build output and independently extracted APK file in the working container.
+- Android: **23/23 tests PASS**, `npm run check:env` PASS, typecheck PASS, Android JS export PASS, Gradle native release build PASS, package/version/label/icon/scheme/signature PASS.
+- Backend: **12/12 tests PASS**, npm audit **0 production advisories**, Next.js build/typecheck PASS, TEST Railway 7/7 anonymous/bogus auth negative HTTPS checks PASS.
+- Android advisory inventory: **35 findings still remain**, 22 high, 13 moderate, no critical. Only PostCSS was corrected compared with exact original HTTPS QA app (36→35).
+- Railway TEST verified **online**, no reported incidents. Supabase TEST SQL recheck: PlayersHype SaaS test tenant **5 invoices / 5 cases / USD $1,404.49 outstanding**; JJ SPA **0 invoices / $0.00**. No DB writes done.
+- GitHub PR #1 remains **DRAFT and unmerged**; `main`, production, landing, original user-installed Android and source branch remain unchanged.
+- GitHub CI has two runs: older #37930619177 was green but its 385-byte artifact contained only the security report because of an APK output-path error; **it must NOT be distributed as an installer**. Corrected run **#37931083943** includes the real APK, independently inspected/hashed. Fix is committed in RC1 workflow and this final report is based only on the corrected run.
+
+**Decision:** v0.1 RC1 Android installer and backend acceptance = BUILD/SMOKE PASS on isolated TEST candidate. **Formal M1 security certification = NOT YET**, with two genuine authorized JWT cross-tenant HTTPS sessions still pending, plus residual Android risk disposition and new RC1 magic-link redirect allowlist still unverified. Do not treat RC1 as a production release, and do not require a repeat Samsung install just to complete documentation.
