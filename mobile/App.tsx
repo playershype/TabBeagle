@@ -21,6 +21,7 @@ import AddCustomerScreen from './src/screens/AddCustomerScreen';
 import InvoiceDetailScreen from './src/screens/InvoiceDetailScreen';
 import AccountPasswordScreen from './src/screens/AccountPasswordScreen';
 import { testPasswordAuthEnabled } from './src/lib/config';
+import Splash from './src/components/Splash';
 const Stack = createNativeStackNavigator<RootStackParams>();
 
 function OrganizationGate() {
@@ -117,7 +118,9 @@ function ConfiguredApp() {
   </View>;
 }
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
+  const onSplashDone = useCallback(() => setSplashDone(true), []);
   return <SafeAreaProvider><SafeAreaView style={ui.page}><StatusBar style="dark" />
-    {configErrors.length ? <Form><Text style={ui.title}>Setup needed</Text><Text style={ui.subtitle}>This build has no configured test environment. Ask for a configured build to sign in and save invoices.</Text><ErrorText message={configErrors.join('\n')} /></Form> : <ConfiguredApp />}
+    {!splashDone ? <Splash onDone={onSplashDone} /> : configErrors.length ? <Form><Text style={ui.title}>Setup needed</Text><Text style={ui.subtitle}>This build has no configured test environment. Ask for a configured build to sign in and save invoices.</Text><ErrorText message={configErrors.join('\n')} /></Form> : <ConfiguredApp />}
   </SafeAreaView></SafeAreaProvider>;
 }
