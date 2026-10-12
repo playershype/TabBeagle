@@ -8,12 +8,16 @@ test('accepts unconsumed Supabase magic link without opening a browser', () => {
   assert.deepEqual(parseEmailProof(url, root), { kind:'magic-link', tokenHash:token });
   assert.deepEqual(parseEmailProof(' 123456 ', root), { kind:'email-code', token:'123456' });
 });
+test('accepts a password reset link from the configured project', () => {
+  const reset = root + '/auth/v1/verify?token=' + token + '&type=recovery&redirect_to=tabbeagleauthlab%3A%2F%2Fauth%2Fcallback';
+  assert.deepEqual(parseEmailProof(reset, root), { kind:'recovery', tokenHash:token });
+});
+
 test('rejects other Supabase projects, tracking links, insecure redirects and other actions', () => {
   const bad = [
     'http://gaileljkciseopfgwsbc.supabase.co/auth/v1/verify?token='+token+'&type=magiclink',
     'https://evil.example/auth/v1/verify?token='+token+'&type=magiclink',
     'https://gaileljkciseopfgwsbc.supabase.co.evil.example/auth/v1/verify?token='+token+'&type=magiclink',
-    root+'/auth/v1/verify?token='+token+'&type=recovery',
     root+'/auth/v1/verify?token='+token+'&type=magiclink&token='+token,
     root+'/auth/v1/verify?token='+token+'&type=magiclink&type=magiclink',
     root+'/auth/v1/verify?token='+token+'&type=magiclink#injected',

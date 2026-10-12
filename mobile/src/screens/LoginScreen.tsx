@@ -81,7 +81,7 @@ export default function LoginScreen() {
       const client = getSupabase();
       const result = proof.kind === 'email-code'
         ? await client.auth.verifyOtp({ email: normalizedEmail, token: proof.token, type: 'email' })
-        : await client.auth.verifyOtp({ token_hash: proof.tokenHash, type: 'magiclink' });
+        : await client.auth.verifyOtp({ token_hash: proof.tokenHash, type: proof.kind === 'recovery' ? 'recovery' : 'magiclink' });
       if (result.error || !result.data.session) throw new Error('This one-time proof is expired, already used, or rejected. Do not open the same link again.');
       if (result.data.session.user.email?.toLowerCase() !== normalizedEmail) {
         await client.auth.signOut({ scope: 'local' });
@@ -101,7 +101,10 @@ export default function LoginScreen() {
     {method === 'link' && sent && <Text style={[ui.subtitle, { marginTop: 20 }]}>Check your inbox. Open the newest sign-in link on this device. If Gmail shows an empty browser, use its menu to open the link in Chrome.</Text>}
     {method === 'password' && testPasswordAuthEnabled && <>
       {resetSent
-        ? <Text style={[ui.subtitle, { marginTop: 12 }]}>If this email has an account, a reset link is on its way. Open it on this device, then set your new password under “Account security”.</Text>
+        ? <>
+          <Text style={[ui.subtitle, { marginTop: 12 }]}>If this email has an account, a reset link is on its way. In Gmail, long-press the reset link and choose Copy link, then verify it below. Do not tap it: it opens a blank browser. After verifying, set your new password under “Account security”.</Text>
+          <Button title="Verify reset link inside TabBeagle" secondary disabled={busy} onPress={() => { setMethod('link'); setShowProof(true); setError(null); }} />
+        </>
         : <Button title="Forgot password?" secondary disabled={busy} onPress={sendReset} />}
     </>}
     {method === 'link' && <>
