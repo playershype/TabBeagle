@@ -31,6 +31,7 @@ export const customerInput = z.object({
   billingEmail: z.string().trim().email().max(254).nullable(),
   ...customerProfileFields.shape,
 }).strict();
+export const customerArchiveInput = z.object({ organizationId: uuid }).strict();
 export const customerUpdateInput = z.object({
   organizationId: uuid,
   displayName: z.string().trim().min(1).max(160),

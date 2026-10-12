@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 export const GET = route(async request => {
   const db = await authenticatedClient(request);
   const org = uuid.parse(new URL(request.url).searchParams.get('organizationId'));
-  const { data, error } = await db.from('customers').select('*').eq('organization_id', org).order('display_name');
+  const { data, error } = await db.from('customers').select('*').eq('organization_id', org).eq('status', 'ACTIVE').order('display_name');
   databaseError(error);
   return json(data);
 });

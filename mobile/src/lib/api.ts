@@ -3,7 +3,7 @@ import { getSupabase } from './supabase';
 import { config } from './config';
 import { customerSchema, invoiceSchema, organizationSchema } from '../types';
 import { transportMessage } from './retry';
-async function request<T>(path: string, schema: z.ZodType<T>, input?: unknown, method?: 'PATCH'): Promise<T> {
+async function request<T>(path: string, schema: z.ZodType<T>, input?: unknown, method?: 'PATCH' | 'DELETE'): Promise<T> {
   const { data, error } = await getSupabase().auth.getSession();
   if (error || !data.session) throw new Error('Sign in to continue.');
   const controller = new AbortController();
@@ -43,6 +43,7 @@ export type CustomerProfileInput = {
 export const createCustomer = (input: CustomerProfileInput & { organizationId: string; requestId: string }) => request('/api/customers', customerSchema, input);
 export const fetchCustomer = (id: string) => request(`/api/customers/${id}`, customerSchema);
 export const updateCustomer = (id: string, input: CustomerProfileInput & { organizationId: string }) => request(`/api/customers/${id}`, customerSchema, input, 'PATCH');
+export const archiveCustomer = (id: string, organizationId: string) => request(`/api/customers/${id}`, customerSchema, { organizationId }, 'DELETE');
 export const fetchInvoices = (organizationId: string) => request(`/api/invoices?organizationId=${organizationId}`, invoiceSchema.array());
 export const createInvoice = (input: { organizationId: string; customerId: string; requestId: string; invoiceNumber: string; amountMinor: number; currency: 'USD'; issueDate: string; dueDate: string }) => request('/api/invoices', invoiceSchema, input);
 export const fetchInvoice = (id: string) => request(`/api/invoices/${id}`, invoiceSchema);

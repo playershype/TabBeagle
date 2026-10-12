@@ -3,7 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { Customer, Invoice, RootStackParams } from '../types';
-import { fetchCustomer, fetchInvoices, updateCustomer } from '../lib/api';
+import { archiveCustomer, fetchCustomer, fetchInvoices, updateCustomer } from '../lib/api';
+import { confirmArchiveCustomer } from '../lib/customerActions';
 import { daysOverdue, fmtMoney, outstandingByCurrency, todayIn } from '../lib/aging';
 import { useOrganization } from '../lib/org';
 import { draftFromCustomer, emptyDraft, termsLabel, toPayload, type CustomerDraft } from '../lib/customerForm';
@@ -81,6 +82,10 @@ export default function CustomerDetailScreen({ navigation, route }: NativeStackS
     </View>
 
     <Button title="Edit profile" secondary onPress={() => { setDraft(draftFromCustomer(customer)); setEditing(true); setError(null); }} />
+    <View style={{ marginTop: 10 }}><Button title="Delete customer" secondary disabled={busy} onPress={() => confirmArchiveCustomer(customer.display_name, async () => {
+      setBusy(true); setError(null);
+      try { await archiveCustomer(customer.id, org.id); navigation.goBack(); } catch (e) { setError(messageOf(e)); setBusy(false); }
+    })} /></View>
 
     <Text style={[ui.label, { fontSize: 16, marginTop: 26 }]}>Contact</Text>
     <Row label="Contact person" value={customer.contact_name} />

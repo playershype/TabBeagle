@@ -1,5 +1,5 @@
 import { authenticatedClient, body, databaseError, HttpError, json, route } from '../../../../lib/http';
-import { customerUpdateInput, profileForDatabase, uuid } from '../../../../lib/validation';
+import { customerArchiveInput, customerUpdateInput, profileForDatabase, uuid } from '../../../../lib/validation';
 export const dynamic = 'force-dynamic';
 const customerId = (request: Request) => uuid.parse(new URL(request.url).pathname.split('/').pop());
 export const GET = route(async request => {
@@ -18,6 +18,16 @@ export const PATCH = route(async request => {
   });
   // P0002 = the customer does not exist in this organization (or is archived).
   if (error?.code === 'P0002') throw new HttpError(404, 'Customer not found.');
+  databaseError(error);
+  return json(data);
+});
+// Archiving hides the customer from lists and keeps the invoice history. Customers with unpaid invoices are refused.
+export const DELETE = route(async request => {
+  const db = await authenticatedClient(request);
+  const i = await body(request, customerArchiveInput);
+  const { data, error } = await db.rpc('archive_customer', { p_organization_id: i.organizationId, p_customer_id: customerId(request) });
+  if (error?.code === 'P0002') throw new HttpError(404, 'Customer not found.');
+  if (error?.code === 'P0004') throw new HttpError(409, 'This customer has unpaid invoices. Mark them paid or void them before archiving.');
   databaseError(error);
   return json(data);
 });
