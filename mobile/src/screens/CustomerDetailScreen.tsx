@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,6 +26,7 @@ export default function CustomerDetailScreen({ navigation, route }: NativeStackS
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<CustomerDraft>(emptyDraft());
   const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
+  const openedForEdit = useRef(false);
 
   const load = useCallback(async () => {
     setBusy(true); setError(null);
@@ -33,9 +34,14 @@ export default function CustomerDetailScreen({ navigation, route }: NativeStackS
       const [c, all] = await Promise.all([fetchCustomer(customerId), fetchInvoices(org.id)]);
       setCustomer(c);
       setInvoices(all.filter(i => i.customer_id === customerId));
+      if (route.params.startEditing && !openedForEdit.current) {
+        openedForEdit.current = true;
+        setDraft(draftFromCustomer(c));
+        setEditing(true);
+      }
     } catch (e) { setError(messageOf(e)); }
     finally { setBusy(false); }
-  }, [customerId, org.id]);
+  }, [customerId, org.id, route.params.startEditing]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   async function save() {

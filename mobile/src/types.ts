@@ -30,5 +30,5 @@ export type Invoice = z.infer<typeof invoiceSchema>;
 export type AgingBucket = 'current' | '1-30' | '31-60' | '61-90' | '90+';
 export type RootStackParams = {
   Dashboard: undefined; AccountPassword: undefined; AddCustomer: undefined; AddInvoice: undefined; InvoiceDetail: { invoiceId: string };
-  Customers: undefined; CustomerDetail: { customerId: string };
+  Customers: undefined; CustomerDetail: { customerId: string; startEditing?: boolean };
 };

@@ -25,11 +25,14 @@ export default function CustomersScreen({ navigation }: NativeStackScreenProps<R
       <Button title="+ New customer" onPress={() => navigation.navigate('AddCustomer')} />
     </>}
     ListEmptyComponent={customers !== null && !error ? <Text style={ui.subtitle}>No customers yet.</Text> : null}
-    renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`Customer ${item.display_name}`} onPress={() => navigation.navigate('CustomerDetail', { customerId: item.id })} style={ui.card}>
-      <Text style={ui.title}>{item.display_name}</Text>
-      {!!item.company_name && <Text style={ui.subtitle}>{item.company_name}</Text>}
-      <Text style={ui.subtitle}>{item.contact_name || item.billing_email || 'No contact yet'}</Text>
-      {!!item.tags?.length && <Text style={[ui.subtitle, { fontSize: 12 }]}>{item.tags.join(' · ')}</Text>}
-    </Pressable>}
+    renderItem={({ item }) => <View>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Customer ${item.display_name}`} onPress={() => navigation.navigate('CustomerDetail', { customerId: item.id })} style={ui.card}>
+        <Text style={ui.title}>{item.display_name}</Text>
+        {!!item.company_name && <Text style={ui.subtitle}>{item.company_name}</Text>}
+        <Text style={ui.subtitle}>{item.contact_name || item.billing_email || 'No contact yet'}</Text>
+        {!!item.tags?.length && <Text style={[ui.subtitle, { fontSize: 12 }]}>{item.tags.join(' · ')}</Text>}
+      </Pressable>
+      <Button title="Edit customer" secondary onPress={() => navigation.navigate('CustomerDetail', { customerId: item.id, startEditing: true })} />
+    </View>}
   /></View>;
 }
