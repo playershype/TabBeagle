@@ -3,14 +3,14 @@ import { getSupabase } from './supabase';
 import { config } from './config';
 import { customerSchema, invoiceSchema, organizationSchema } from '../types';
 import { transportMessage } from './retry';
-async function request<T>(path: string, schema: z.ZodType<T>, input?: unknown): Promise<T> {
+async function request<T>(path: string, schema: z.ZodType<T>, input?: unknown, method?: 'PATCH'): Promise<T> {
   const { data, error } = await getSupabase().auth.getSession();
   if (error || !data.session) throw new Error('Sign in to continue.');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20000);
   try {
     const res = await fetch(`${config.apiUrl}${path}`, {
-      method: input === undefined ? 'GET' : 'POST', signal: controller.signal,
+      method: method ?? (input === undefined ? 'GET' : 'POST'), signal: controller.signal,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
       ...(input === undefined ? {} : { body: JSON.stringify(input) }),
     });
@@ -35,7 +35,14 @@ async function request<T>(path: string, schema: z.ZodType<T>, input?: unknown): 
 export const fetchOrganizations = () => request('/api/organizations', organizationSchema.array());
 export const createOrganization = (name: string, timezone: string) => request('/api/organizations', organizationSchema, { name, timezone });
 export const fetchCustomers = (organizationId: string) => request(`/api/customers?organizationId=${organizationId}`, customerSchema.array());
-export const createCustomer = (input: { organizationId: string; requestId: string; displayName: string; billingEmail: string | null }) => request('/api/customers', customerSchema, input);
+export type CustomerProfileInput = {
+  displayName: string; billingEmail: string | null; contactName: string | null; phone: string | null; alternateEmail: string | null;
+  companyName: string | null; billingAddress: string | null; workAddress: string | null; paymentTermsDays: number | null;
+  remindersEnabled: boolean; collectionDay: number | null; notes: string | null; tags: string[];
+};
+export const createCustomer = (input: CustomerProfileInput & { organizationId: string; requestId: string }) => request('/api/customers', customerSchema, input);
+export const fetchCustomer = (id: string) => request(`/api/customers/${id}`, customerSchema);
+export const updateCustomer = (id: string, input: CustomerProfileInput & { organizationId: string }) => request(`/api/customers/${id}`, customerSchema, input, 'PATCH');
 export const fetchInvoices = (organizationId: string) => request(`/api/invoices?organizationId=${organizationId}`, invoiceSchema.array());
 export const createInvoice = (input: { organizationId: string; customerId: string; requestId: string; invoiceNumber: string; amountMinor: number; currency: 'USD'; issueDate: string; dueDate: string }) => request('/api/invoices', invoiceSchema, input);
 export const fetchInvoice = (id: string) => request(`/api/invoices/${id}`, invoiceSchema);

@@ -51,7 +51,7 @@ export default function DashboardScreen({ navigation }: NativeStackScreenProps<R
         </>}
       </View>}
       <Button title="+ New invoice" onPress={() => navigation.navigate('AddInvoice')} />
-      <Button title="+ New customer" secondary onPress={() => navigation.navigate('AddCustomer')} />
+      <Button title="Customers" secondary onPress={() => navigation.navigate('Customers')} />
       <Text style={[ui.label, { marginBottom: 10 }]}>Invoices</Text>
     </>}
     ListEmptyComponent={invoices !== null && !error ? <Text style={ui.subtitle}>No invoices yet. Start by adding a customer and their first invoice.</Text> : null}

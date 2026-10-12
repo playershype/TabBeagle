@@ -18,6 +18,8 @@ import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import AddInvoiceScreen from './src/screens/AddInvoiceScreen';
 import AddCustomerScreen from './src/screens/AddCustomerScreen';
+import CustomersScreen from './src/screens/CustomersScreen';
+import CustomerDetailScreen from './src/screens/CustomerDetailScreen';
 import InvoiceDetailScreen from './src/screens/InvoiceDetailScreen';
 import AccountPasswordScreen from './src/screens/AccountPasswordScreen';
 import { testPasswordAuthEnabled } from './src/lib/config';
@@ -56,6 +58,8 @@ function OrganizationGate() {
       <Stack.Navigator screenOptions={{ headerTitleStyle: { color: '#0F1E36' } }}>
         <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'TabBeagle' }} />
         <Stack.Screen name="AddCustomer" component={AddCustomerScreen} options={{ title: 'New customer' }} />
+        <Stack.Screen name="Customers" component={CustomersScreen} options={{ title: 'Customers' }} />
+        <Stack.Screen name="CustomerDetail" component={CustomerDetailScreen} options={{ title: 'Customer' }} />
         <Stack.Screen name="AddInvoice" component={AddInvoiceScreen} options={{ title: 'New invoice' }} />
         <Stack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} options={{ title: 'Invoice details' }} />
         {testPasswordAuthEnabled && <Stack.Screen name="AccountPassword" component={AccountPasswordScreen} options={{ title: 'Account security · TEST' }} />}

@@ -6,9 +6,14 @@ const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
 export const organizationSchema = z.object({
   id: z.string().uuid(), name: z.string(), timezone: z.string(), status: z.literal('ACTIVE'),
 });
+const nullableText = z.string().nullable().optional();
 export const customerSchema = z.object({
   id: z.string().uuid(), organization_id: z.string().uuid(), display_name: z.string(),
   billing_email: z.string().nullable(), status: z.enum(['ACTIVE','ARCHIVED']),
+  contact_name: nullableText, phone: nullableText, alternate_email: nullableText, company_name: nullableText,
+  billing_address: nullableText, work_address: nullableText,
+  payment_terms_days: z.number().int().nullable().optional(), reminders_enabled: z.boolean().optional(),
+  collection_day: z.number().int().nullable().optional(), notes: nullableText, tags: z.array(z.string()).optional(),
 });
 export const invoiceSchema = z.object({
   id: z.string().uuid(), organization_id: z.string().uuid(), customer_id: z.string().uuid(),
@@ -25,4 +30,5 @@ export type Invoice = z.infer<typeof invoiceSchema>;
 export type AgingBucket = 'current' | '1-30' | '31-60' | '61-90' | '90+';
 export type RootStackParams = {
   Dashboard: undefined; AccountPassword: undefined; AddCustomer: undefined; AddInvoice: undefined; InvoiceDetail: { invoiceId: string };
+  Customers: undefined; CustomerDetail: { customerId: string };
 };
