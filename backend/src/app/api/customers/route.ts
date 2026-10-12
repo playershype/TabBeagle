@@ -1,5 +1,5 @@
 import { authenticatedClient, body, databaseError, json, route } from '../../../lib/http';
-import { customerInput, uuid } from '../../../lib/validation';
+import { customerInput, profileForDatabase, uuid } from '../../../lib/validation';
 export const dynamic = 'force-dynamic';
 export const GET = route(async request => {
   const db = await authenticatedClient(request);
@@ -11,9 +11,10 @@ export const GET = route(async request => {
 export const POST = route(async request => {
   const db = await authenticatedClient(request);
   const i = await body(request, customerInput);
-  const { data, error } = await db.rpc('create_customer', {
+  const { data, error } = await db.rpc('create_customer_profile', {
     p_organization_id: i.organizationId, p_request_id: i.requestId,
     p_display_name: i.displayName, p_billing_email: i.billingEmail,
+    p_profile: profileForDatabase(i),
   });
   databaseError(error);
   return json(data, 201);
