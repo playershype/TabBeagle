@@ -1,0 +1,33 @@
+name: Deploy TEST backend to Railway
+# Deploys the backend/ folder to the TEST Railway service. Runs on manual trigger or when backend/ changes on this branch.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/android-splash-v01
+    paths:
+      - backend/**
+      - .github/workflows/deploy-backend-test-railway.yml
+permissions:
+  contents: read
+concurrency:
+  group: railway-test-backend
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: tabbeagle-test
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the Railway token is configured
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "Missing secret RAILWAY_TOKEN. Add it in GitHub: Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4
+      - name: Deploy to the TEST service
+        run: railway up --service tabbeagle-api-test --environment test --ci
