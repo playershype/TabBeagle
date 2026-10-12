@@ -11,6 +11,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [method, setMethod] = useState<'password' | 'link'>(testPasswordAuthEnabled ? 'password' : 'link');
   const [sent, setSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
@@ -51,6 +52,23 @@ export default function LoginScreen() {
       }
     } finally { running.current = false; setBusy(false); }
   }
+  // Sends a reset email to existing accounts only. Supabase does not create users on reset.
+  async function sendReset() {
+    if (running.current) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { setError('Enter your account email first.'); return; }
+    running.current = true; setBusy(true); setError(null);
+    try {
+      const { error } = await getSupabase().auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: ExpoLinking.createURL('auth/callback'),
+      });
+      if (error) throw error;
+      setResetSent(true);
+    } catch (e) {
+      const message = messageOf(e);
+      setError(/rate limit|too many requests|429/i.test(message) ? 'Email sending is temporarily limited. Wait before trying again.' : message);
+    } finally { running.current = false; setBusy(false); }
+  }
   async function verifyInsideApp() {
     if (running.current) return;
     const normalizedEmail = email.trim().toLowerCase();
@@ -81,6 +99,11 @@ export default function LoginScreen() {
     <Field label="Work email" value={email} onChangeText={value => { setEmail(value); setSent(false); setError(null); setRateLimited(false); }} autoCapitalize="none" keyboardType="email-address" autoComplete="email" editable={!busy} />
     {method === 'password' && testPasswordAuthEnabled && <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoCorrect={false} autoCapitalize="none" autoComplete="current-password" editable={!busy} />}
     {method === 'link' && sent && <Text style={[ui.subtitle, { marginTop: 20 }]}>Check your inbox. Open the newest sign-in link on this device. If Gmail shows an empty browser, use its menu to open the link in Chrome.</Text>}
+    {method === 'password' && testPasswordAuthEnabled && <>
+      {resetSent
+        ? <Text style={[ui.subtitle, { marginTop: 12 }]}>If this email has an account, a reset link is on its way. Open it on this device, then set your new password under “Account security”.</Text>
+        : <Button title="Forgot password?" secondary disabled={busy} onPress={sendReset} />}
+    </>}
     {method === 'link' && <>
       <Button title={showProof ? 'Hide in-app verification' : 'Gmail or Chrome blank? Verify inside TabBeagle'} secondary disabled={busy} onPress={() => { setShowProof(!showProof); setError(null); }} />
       {showProof && <>
