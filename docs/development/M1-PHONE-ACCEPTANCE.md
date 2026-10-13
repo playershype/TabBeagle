@@ -14,8 +14,8 @@ Reference gate: `docs/development/TEST-ENVIRONMENT.md` → "Phone acceptance".
 | 4 | Create business with its timezone, customer, invoice `TEST-001` USD 1250.09 with valid dates | Reported done with invoice `T-01` (not `TEST-001`), customer Test1, USD 1,250.50. Owner confirmed T-01 was the invoice used for the save and reopen test. Supabase TEST check 2026-10-13: one `invoices` row for T-01, `original_amount_minor` 125050 (USD 1,250.50), outstanding 125050, status UNPAID, one linked `ar_cases` row | Decide whether T-01 replaces TEST-001 in the gate wording; TEST-001 at USD 1,250.09 was never created
 | 5 | Open detail, force-stop, reopen; session restored and USD 1250.09 read from backend | Reported done | Note |
 | 6 | Sign out, sign in again; same customer and invoice. Second business owner cannot see first invoice | Reported done | Note which second account was used |
-| 7 | Interrupt network during save, retry without changing form; exactly one invoice, one AR case, one creation audit event | Reported done | Count in Supabase TEST (`invoices`, `ar_cases`, `audit_events`) for that invoice |
-| 8 | PostgREST JSON shape for `customer` and one-to-one `ar_case` matches `invoiceSchema` | Not reported | Result of opening the invoice list without app errors (or SQL check) |
+| 7 | Interrupt network during save, retry without changing form; exactly one invoice, one AR case, one creation audit event | Reported done. Owner confirmed invoices appeared after the retry. Supabase TEST check 2026-10-13 for invoice T-01 (`365b1aa2-1da7-4bf2-9550-c3175406dcac`): 1 `invoices` row, 1 `ar_cases` row, 1 `audit_events` row referencing that invoice id | Confirm the single audit event is the creation event (event name not yet checked); confirm the owner's account and retry used T-01 |
+| 8 | PostgREST JSON shape for `customer` and one-to-one `ar_case` matches `invoiceSchema` | Reported done: owner confirmed the invoice list opened without errors after reopening | SQL shape check or screenshot of the list, optional |
 
 ## Identifiers policy
 
