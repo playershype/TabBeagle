@@ -8,7 +8,7 @@ Reference gate: `docs/development/TEST-ENVIRONMENT.md` → "Phone acceptance".
 
 | # | Gate item | Reported result | Evidence still needed |
 |---|---|---|---|
-| 1 | Install over existing app data; record device, Android version, APK SHA and certificate | Reported done | Device model, Android version, APK SHA-256, certificate fingerprint |
+| 1 | Install over existing app data; record device, Android version, APK SHA and certificate | Reported done. Device: Samsung Galaxy S26 Ultra (model SM-S948U), shown in device info screen 2026-10-13 | Android version, APK SHA-256, certificate fingerprint |
 | 2 | Cold launch with Metro off; brand icon/splash and login | Reported done | Screenshot |
 | 3 | Email link opened on the same device logs in; repeat after app closed; expired/wrong link shows error and allows retry | Reported done (login by password used for reset flow) | Note which login method was used |
 | 4 | Create business with its timezone, customer, invoice `TEST-001` USD 1250.09 with valid dates | Reported done | Screenshot of invoice detail |
@@ -16,6 +16,10 @@ Reference gate: `docs/development/TEST-ENVIRONMENT.md` → "Phone acceptance".
 | 6 | Sign out, sign in again; same customer and invoice. Second business owner cannot see first invoice | Reported done | Note which second account was used |
 | 7 | Interrupt network during save, retry without changing form; exactly one invoice, one AR case, one creation audit event | Reported done | Count in Supabase TEST (`invoices`, `ar_cases`, `audit_events`) for that invoice |
 | 8 | PostgREST JSON shape for `customer` and one-to-one `ar_case` matches `invoiceSchema` | Not reported | Result of opening the invoice list without app errors (or SQL check) |
+
+## Identifiers policy
+
+Serial number, IMEI and phone number are deliberately not stored in this repository.
 
 ## Open items outside this record
 
