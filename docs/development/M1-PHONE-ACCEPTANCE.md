@@ -8,7 +8,7 @@ Reference gate: `docs/development/TEST-ENVIRONMENT.md` → "Phone acceptance".
 
 | # | Gate item | Reported result | Evidence still needed |
 |---|---|---|---|
-| 1 | Install over existing app data; record device, Android version, APK SHA and certificate | Reported done. Device: Samsung Galaxy S26 Ultra (model SM-S948U), shown in device info screen 2026-10-13 | Android version number (reported UI: Samsung One UI 9.0; base Android number still needed), APK SHA-256, certificate fingerprint |
+| 1 | Install over existing app data; record device, Android version, APK SHA and certificate | Reported done. Device: Samsung Galaxy S26 Ultra (model SM-S948U), shown in device info screen 2026-10-13 | APK SHA-256, certificate fingerprint |
 | 2 | Cold launch with Metro off; brand icon/splash and login | Reported done | Screenshot |
 | 3 | Email link opened on the same device logs in; repeat after app closed; expired/wrong link shows error and allows retry | Reported done (login by password used for reset flow) | Note which login method was used |
 | 4 | Create business with its timezone, customer, invoice `TEST-001` USD 1250.09 with valid dates | Reported done with invoice `T-01` (not `TEST-001`), customer Test1, USD 1,250.50. Owner confirmed T-01 was the invoice used for the save and reopen test. Supabase TEST check 2026-10-13: one `invoices` row for T-01, `original_amount_minor` 125050 (USD 1,250.50), outstanding 125050, status UNPAID, one linked `ar_cases` row | Decide whether T-01 replaces TEST-001 in the gate wording; TEST-001 at USD 1,250.09 was never created
